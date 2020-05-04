@@ -1,0 +1,24 @@
+{
+  "controls": {
+    "editor": {
+      "editform": {
+        "maxLengthText": "Max antal tecken i editform",
+        "firstOptionText": "Välj"
+      },
+      "edithandler": {
+        "maxLengthText": "",
+        "firstOptionText": ""
+      }
+    },
+    "templates": {
+      "editform": {
+        "maxLengthText": "",
+        "firstOptionText": ""
+      },
+      "edithandler": {
+        "maxLengthText": "",
+        "firstOptionText": ""
+      }
+    }
+  }
+}

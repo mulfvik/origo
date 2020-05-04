@@ -1,6 +1,13 @@
 {
   "controls": [
     {
+      "name": "translator",
+      "options": {
+        "url": "sv.json",
+        "intl": "sv"
+      }
+    },
+    {
       "name": "home",
       "options": {
         "zoomOnStart": true
