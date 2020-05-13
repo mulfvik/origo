@@ -16,6 +16,9 @@
       "name": "sharemap"
     },
     {
+      "name": "globe"
+    },
+    {
       "name": "geoposition"
     },
     {
@@ -139,17 +142,6 @@
           "name": "name"
         }
       ],
-      "visible": true
-    },
-    {
-      "name": "origo-mask",
-      "opacity": 0.25,
-      "title": "origo-mask",
-      "group": "none",
-      "queryable": false,
-      "source": "data/origo-mask-3857.geojson",
-      "style": "mask",
-      "type": "GEOJSON",
       "visible": true
     },
     {
