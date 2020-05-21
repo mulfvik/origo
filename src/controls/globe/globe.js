@@ -1,4 +1,4 @@
-import OLCesium from 'olcs/OLCesium.js';
+import OLCesium from 'olcs/OLCesium';
 import { Component, Button, dom } from '../../ui';
 
 const Globe = function Globe(options = {}) {
@@ -9,11 +9,10 @@ const Globe = function Globe(options = {}) {
   let map;
   let viewer;
   let globeButton;
+  let ol3d;
 
-
-  const toggleGlobe = function toggleGlobe() {
-    const ol3d = new OLCesium({ map: map });
-    ol3d.setEnabled(true);
+  const toggleGlobe = () => {
+    ol3d.setEnabled(!ol3d.getEnabled());
   };
 
   return Component({
@@ -21,6 +20,7 @@ const Globe = function Globe(options = {}) {
     onAdd(evt) {
       viewer = evt.target;
       map = viewer.getMap();
+      ol3d = new OLCesium({ map });
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       this.on('render', this.onRender);
       this.addComponents([globeButton]);
@@ -33,7 +33,7 @@ const Globe = function Globe(options = {}) {
           toggleGlobe();
         },
         icon: '#fa-cube',
-        tooltipText: '3D',
+        tooltipText: 'Globe',
         tooltipPlacement: 'east'
       });
     },
@@ -47,4 +47,3 @@ const Globe = function Globe(options = {}) {
 };
 
 export default Globe;
-
