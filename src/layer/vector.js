@@ -15,6 +15,7 @@ export default function vector(opt, src, viewer) {
     case 'vector':
     {
       options.source = source;
+      options.altitudeMode = 'clampToGround';
       options.style = Style.createStyle({
         style: options.style,
         viewer
