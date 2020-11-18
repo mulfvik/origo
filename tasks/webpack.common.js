@@ -5,6 +5,7 @@ module.exports = {
     './origo.js'
   ],
   module: {
+    unknownContextCritical: false,
     rules: [
       {
         test: /\.(js)$/,
@@ -28,8 +29,22 @@ module.exports = {
             }]
           ]
         }
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|gif|jpg|jpeg|svg|xml|json)$/,
+        use: ['url-loader']
       }
     ]
+  },
+  amd: {
+    toUrlUndefined: true
+  },
+  node: {
+    fs: 'empty'
   },
   resolve: {
     extensions: ['*', '.js']
@@ -43,6 +58,9 @@ module.exports = {
     }),
     new webpack.ProvidePlugin({
       fetch: 'exports-loader?self.fetch!whatwg-fetch/dist/fetch.umd'
+    }),
+    new webpack.DefinePlugin({
+      CESIUM_BASE_URL: JSON.stringify('')
     })
   ]
 };

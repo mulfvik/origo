@@ -7,7 +7,8 @@ module.exports = merge(common, {
     filename: 'origo.js',
     libraryTarget: 'var',
     libraryExport: 'default',
-    library: 'Origo'
+    library: 'Origo',
+    sourcePrefix: ''
   },
   devServer: {
     contentBase: './',

@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import OLCesium from 'olcs/OLCesium';
+import * as Cesium from 'cesium';
 import { Component, Button, dom } from '../../ui';
 
 const Globe = function Globe(options = {}) {
@@ -12,6 +13,9 @@ const Globe = function Globe(options = {}) {
     CIAssetIdTerrain,
     CIAssetId3DTiles = 96188
   } = options;
+
+  // ol-cesium depends on a global Cesium
+  window['Cesium'] = Cesium;
 
   let map;
   let viewer;
