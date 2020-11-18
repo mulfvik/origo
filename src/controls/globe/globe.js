@@ -1,21 +1,23 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
 import OLCesium from 'olcs/OLCesium';
 import * as Cesium from 'cesium';
 import { Component, Button, dom } from '../../ui';
 
 const Globe = function Globe(options = {}) {
+  // ol-cesium depends on a global Cesium
+  window.Cesium = Cesium;
+
   let {
     target
   } = options;
-  // CI... is short for Cesium Ion...
+
   const {
     CIToken,
     CIAssetIdTerrain,
-    CIAssetId3DTiles = 96188
+    CIAssetId3DTiles = 96188,
+    Cesium3DTilesUrl
   } = options;
-
-  // ol-cesium depends on a global Cesium
-  window['Cesium'] = Cesium;
 
   let map;
   let viewer;
@@ -58,14 +60,19 @@ const Globe = function Globe(options = {}) {
   };
 
   // 3D-tiles
-  const tilesProviders = (scene) => {
-    // If asset id is provided that 3d tiles is used, else OSM 3D-tileset is used
-    if (CIAssetId3DTiles) {
-      const CITileset = new Cesium.Cesium3DTileset({
+  const cesium3DtilesProviders = (scene) => {
+    let tileset;
+    if (Cesium3DTilesUrl) {
+      tileset = new Cesium.Cesium3DTileset({
+        url: Cesium3DTilesUrl
+      });
+    } else if (CIAssetId3DTiles) {
+      // If asset id is provided that Cesium Ion asset is used, else OSM 3D-tileset is
+      tileset = new Cesium.Cesium3DTileset({
         url: Cesium.IonResource.fromAssetId(CIAssetId3DTiles)
       });
-      scene.primitives.add(CITileset);
     }
+    scene.primitives.add(tileset);
   };
 
   return Component({
@@ -79,7 +86,7 @@ const Globe = function Globe(options = {}) {
       // If token is provided there is access to Cesium Ion and your assets, else define own endpoints for providers
       if (CIToken) {
         terrainProviders(scene);
-        tilesProviders(scene);
+        cesium3DtilesProviders(scene);
       }
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       this.on('render', this.onRender);
