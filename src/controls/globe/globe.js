@@ -15,7 +15,8 @@ const Globe = function Globe(options = {}) {
   const {
     CIToken,
     CIAssetIdTerrain,
-    CIAssetId3DTiles = 96188,
+    CIAssetId3DTiles,
+    CesiumTerrainProvider,
     Cesium3DTilesUrl
   } = options;
 
@@ -23,14 +24,16 @@ const Globe = function Globe(options = {}) {
   let viewer;
   let ol3d;
   let globeButton;
-
-  // To use Cesium Ion features token needs to be provided in config option CIToken
-  Cesium.Ion.defaultAccessToken = CIToken;
+  let tileset;
+  let terrain;
 
   // Toggles between 2D and 3D
   const toggleGlobe = () => {
     ol3d.setEnabled(!ol3d.getEnabled());
   };
+
+  // To use Cesium Ion features token needs to be provided in config option CIToken
+  Cesium.Ion.defaultAccessToken = CIToken;
 
   // Suspend the camera to go below terrain, that is when the terrain is rendered
   const noCameraBelowTerrain = (scene) => {
@@ -44,35 +47,46 @@ const Globe = function Globe(options = {}) {
 
   // Terrain
   const terrainProviders = (scene) => {
-    // If asset id is provided that terrain is used, else a world terrain is used as default
-    if (CIAssetIdTerrain) {
-      const CITerrainProvider = new Cesium.CesiumTerrainProvider({
+    if (CesiumTerrainProvider) {
+      terrain = new Cesium.CesiumTerrainProvider({
+        requestVertexNormals: true,
+        url: CesiumTerrainProvider
+      });
+      scene.terrainProvider = terrain;
+    } else if (CIAssetIdTerrain && CIToken) {
+      terrain = new Cesium.CesiumTerrainProvider({
         requestVertexNormals: true,
         url: Cesium.IonResource.fromAssetId(CIAssetIdTerrain)
       });
-      scene.terrainProvider = CITerrainProvider;
-    } else {
-      const cesiumTerrainProvider = Cesium.createWorldTerrain({
+      scene.terrainProvider = terrain;
+    } else if (CIToken) {
+      // Cesium world terrain is used as default
+      terrain = Cesium.createWorldTerrain({
         requestVertexNormals: true
       });
-      scene.terrainProvider = cesiumTerrainProvider;
+      scene.terrainProvider = terrain;
     }
   };
 
   // 3D-tiles
   const cesium3DtilesProviders = (scene) => {
-    let tileset;
     if (Cesium3DTilesUrl) {
       tileset = new Cesium.Cesium3DTileset({
         url: Cesium3DTilesUrl
       });
-    } else if (CIAssetId3DTiles) {
-      // If asset id is provided that Cesium Ion asset is used, else OSM 3D-tileset is
+      scene.primitives.add(tileset);
+    } else if (CIAssetId3DTiles && CIToken) {
       tileset = new Cesium.Cesium3DTileset({
         url: Cesium.IonResource.fromAssetId(CIAssetId3DTiles)
       });
+      scene.primitives.add(tileset);
+    } else if (CIToken) {
+      // OSM buildings is used as default
+      tileset = new Cesium.Cesium3DTileset({
+        url: Cesium.IonResource.fromAssetId(96188)
+      });
+      scene.primitives.add(tileset);
     }
-    scene.primitives.add(tileset);
   };
 
   return Component({
@@ -82,16 +96,16 @@ const Globe = function Globe(options = {}) {
       map = viewer.getMap();
       ol3d = new OLCesium({ map });
       const scene = ol3d.getCesiumScene();
+      
       noCameraBelowTerrain(scene);
-      // If token is provided there is access to Cesium Ion and your assets, else define own endpoints for providers
-      if (CIToken) {
-        terrainProviders(scene);
-        cesium3DtilesProviders(scene);
-      }
+      terrainProviders(scene);
+      cesium3DtilesProviders(scene);
+
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       this.on('render', this.onRender);
       this.addComponents([globeButton]);
       this.render();
+      
     },
     onInit() {
       globeButton = Button({
