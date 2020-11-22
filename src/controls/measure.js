@@ -348,7 +348,8 @@ const Measure = function Measure({
         source,
         name: 'measure',
         visible: false,
-        zIndex: 6
+        zIndex: 6,
+        altitudeMode: 'clampToGround'
       });
 
       map.addLayer(vector);
