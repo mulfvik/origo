@@ -22,9 +22,11 @@ module.exports = merge(common, {
       { from: path.join(cesiumSource, cesiumWorkers), to: 'Workers' },
       { from: path.join(cesiumSource, 'Widgets'), to: 'Widgets' },
       { from: path.join(cesiumSource, 'Assets'), to: 'Assets' },
+      { from: path.join(cesiumSource, 'ThirdParty'), to: 'ThirdParty' },
       { from: path.join(cesiumSource, cesiumWorkers), to: 'dist/Workers' },
       { from: path.join(cesiumSource, 'Widgets'), to: 'dist/Widgets' },
-      { from: path.join(cesiumSource, 'Assets'), to: 'dist/Assets' }
+      { from: path.join(cesiumSource, 'Assets'), to: 'dist/Assets' },
+      { from: path.join(cesiumSource, 'ThirdParty'), to: 'dist/ThirdParty' }
     ])
   ]
 });
