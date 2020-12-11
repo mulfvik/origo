@@ -35,6 +35,12 @@ const Globe = function Globe(options = {}) {
   // To use Cesium Ion features token needs to be provided in config option token
   Cesium.Ion.defaultAccessToken = cesiumIontoken;
 
+  // TODO put default cesium credits in origo credits container, origo style
+  // Hide default credits
+  const cesiumCredits = () => {
+    document.getElementsByClassName('cesium-credit-logoContainer')[0].parentNode.style.display = 'none';
+  };
+
   // Suspend the camera to go below terrain, that is when the terrain is rendered
   const noCameraBelowTerrain = (scene) => {
     scene.camera.changed.addEventListener(() => {
@@ -114,6 +120,8 @@ const Globe = function Globe(options = {}) {
       noCameraBelowTerrain(scene);
       terrainProviders(scene);
       cesium3DtilesProviders(scene);
+
+      cesiumCredits();
 
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       this.on('render', this.onRender);
