@@ -15,6 +15,7 @@ import Footer from './components/footer';
 import flattenGroups from './utils/flattengroups';
 import getAttributes from './getattributes';
 import getcenter from './geometry/getcenter';
+import isEmbedded from './utils/isembedded';
 
 const Viewer = function Viewer(targetOption, options = {}) {
   let map;
@@ -27,15 +28,12 @@ const Viewer = function Viewer(targetOption, options = {}) {
   } = options;
 
   const {
-    baseUrl = '',
     breakPoints,
     breakPointsPrefix,
     clsOptions = '',
     consoleId = 'o-console',
     mapCls = 'o-map',
     controls = [],
-    constrainResolution = false,
-    enableRotation = true,
     featureinfoOptions = {},
     groups: groupOptions = [],
     pageSettings = {},
@@ -57,6 +55,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
     url
   } = options;
 
+  const viewerOptions = Object.assign({}, options);
   const target = targetOption;
   const center = urlParams.center || centerOption;
   const zoom = urlParams.zoom || zoomOption;
@@ -84,7 +83,9 @@ const Viewer = function Viewer(targetOption, options = {}) {
 
   const addControl = function addControl(control) {
     if (control.onAdd && control.dispatch) {
-      this.addComponent(control);
+      if (!control.options.hideWhenEmbedded || !isEmbedded(this.getTarget())) {
+        this.addComponent(control);
+      }
     } else {
       throw new Error('Valid control must have onAdd and dispatch methods');
     }
@@ -97,8 +98,6 @@ const Viewer = function Viewer(targetOption, options = {}) {
   };
 
   const getExtent = () => extent;
-
-  const getBaseUrl = () => baseUrl;
 
   const getBreakPoints = function getBreakPoints(size) {
     return size && size in breakPoints ? breakPoints[size] : breakPoints;
@@ -121,6 +120,8 @@ const Viewer = function Viewer(targetOption, options = {}) {
   const getTileGridSettings = () => tileGridSettings;
 
   const getTileSize = () => tileGridSettings.tileSize;
+
+  const getViewerOptions = () => viewerOptions;
 
   const getUrl = () => url;
 
@@ -174,7 +175,17 @@ const Viewer = function Viewer(targetOption, options = {}) {
     return layers;
   };
 
-  const getLayer = layerName => getLayers().filter(layer => layer.get('name') === layerName)[0];
+  const getLayer = function getLayer(layerName) {
+    const layerArray = getLayers();
+    if (layerArray.some(layer => layer.get('name') === layerName)) {
+      return layerArray.find(layer => layer.get('name') === layerName);
+    } else if (layerArray.some(layer => layer.get('type') === 'GROUP')) {
+      const groupLayerArray = layerArray.filter(layer => layer.get('type') === 'GROUP');
+      const layersFromGroupLayersArray = groupLayerArray.map(groupLayer => groupLayer.getLayers().getArray());
+      return layersFromGroupLayersArray.flat().find(layer => layer.get('name') === layerName);
+    }
+    return undefined;
+  };
 
   const getQueryableLayers = function getQueryableLayers() {
     const queryableLayers = getLayers().filter(layer => layer.get('queryable') && layer.getVisible());
@@ -242,6 +253,10 @@ const Viewer = function Viewer(targetOption, options = {}) {
   const getFooter = () => footer;
 
   const getMain = () => main;
+
+  const getEmbedded = function getEmbedded() {
+    return isEmbedded(this.getTarget());
+  };
 
   const mergeSavedLayerProps = (initialLayerProps, savedLayerProps) => {
     if (savedLayerProps) {
@@ -386,17 +401,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
 
       tileGrid = maputils.tileGrid(tileGridSettings);
 
-      setMap(Map({
-        extent,
-        getFeatureinfo,
-        projection,
-        center,
-        resolutions,
-        zoom,
-        constrainResolution,
-        enableRotation,
-        target: this.getId()
-      }));
+      setMap(Map(Object.assign(options, { projection, center, zoom, target: this.getId() })));
 
       const layerProps = mergeSavedLayerProps(layerOptions, urlParams.layers);
       this.addLayers(layerProps);
@@ -408,20 +413,23 @@ const Viewer = function Viewer(targetOption, options = {}) {
       });
 
       if (urlParams.feature) {
-        const featureId = urlParams.feature;
+        let featureId = urlParams.feature;
         const layerName = featureId.split('.')[0];
         const layer = getLayer(layerName);
-        const clusterSource = layer.getSource().source;
         const type = layer.get('type');
-        const id = featureId.split('.')[1];
 
-        if (layer) {
+        if (layer && type !== 'GROUP') {
+          const clusterSource = layer.getSource().source;
+          const id = featureId.split('.')[1];
           layer.once('postrender', () => {
             let feature;
 
             if (type === 'WFS' && clusterSource) {
               feature = clusterSource.getFeatureById(featureId);
             } else if (type === 'WFS') {
+              if (featureId.includes('__')) {
+                featureId = featureId.replace(featureId.substring(featureId.lastIndexOf('__'), featureId.lastIndexOf('.')), '');
+              }
               feature = layer.getSource().getFeatureById(featureId);
             } else if (clusterSource) {
               feature = clusterSource.getFeatureById(id);
@@ -438,9 +446,10 @@ const Viewer = function Viewer(targetOption, options = {}) {
               const centerGeometry = getcenter(feature.getGeometry());
               const infowindowType = featureinfoOptions.showOverlay === false ? 'sidebar' : 'overlay';
               featureinfo.render([obj], infowindowType, centerGeometry);
-              map.getView().animate({
-                center: getcenter(feature.getGeometry()),
-                zoom: getResolutions().length - 2
+              map.getView().fit(feature.getGeometry(), {
+                maxZoom: getResolutions().length - 2,
+                padding: [15, 15, 40, 15],
+                duration: 1000
               });
             }
           });
@@ -455,7 +464,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
           geometry: new geom[urlParams.selection.geometryType](urlParams.selection.coordinates)
         });
       }
-      
+
       if (!urlParams.zoom && !urlParams.mapStateId && startExtent) {
         map.getView().fit(startExtent, { size: map.getSize() });
       }
@@ -489,7 +498,6 @@ const Viewer = function Viewer(targetOption, options = {}) {
     addLayers,
     addSource,
     addStyle,
-    getBaseUrl,
     getBreakPoints,
     getCenter,
     getClusterOptions,
@@ -527,10 +535,12 @@ const Viewer = function Viewer(targetOption, options = {}) {
     getTileSize,
     getUrl,
     getUrlParams,
+    getViewerOptions,
     removeGroup,
     removeOverlays,
     zoomToExtent,
-    getSelectionManager
+    getSelectionManager,
+    getEmbedded
   });
 };
 

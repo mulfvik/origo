@@ -3,21 +3,14 @@ import OlView from 'ol/View';
 import mapInteractions from './mapinteractions';
 
 const Map = (options = {}) => {
-  const interactions = mapInteractions({ target: options.target });
-  const map = new OlMap({
-    target: options.target,
-    controls: [],
-    interactions,
-    view: new OlView({
-      extent: options.extent || undefined,
-      projection: options.projection || undefined,
-      center: options.center,
-      resolutions: options.resolutions || undefined,
-      zoom: options.zoom,
-      enableRotation: options.enableRotation,
-      constrainResolution: options.constrainResolution
-    })
-  });
+  const interactions = mapInteractions({ target: options.target, mapInteractions: options.pageSettings && options.pageSettings.mapInteractions ? options.pageSettings.mapInteractions : {} });
+  const mapOptions = Object.assign(options, { interactions });
+  delete mapOptions.layers;
+  mapOptions.controls = [];
+
+  const view = new OlView(options);
+  const map = new OlMap(Object.assign(mapOptions, { view }));
+
   return map;
 };
 

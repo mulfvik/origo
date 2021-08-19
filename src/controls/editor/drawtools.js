@@ -1,18 +1,20 @@
-import $ from 'jquery';
 import dropDown from '../../dropdown';
 import dispatcher from './editdispatcher';
 import utils from '../../utils';
+import copyTool from './copyTool';
 
 const createElement = utils.createElement;
 
 let viewer;
+let layer;
 
 const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
   const toolNames = {
     Polygon: 'Polygon',
     Point: 'Punkt',
     Line: 'Linje',
-    box: 'Rektangel'
+    box: 'Rektangel',
+    Copy: 'Kopiera'
   };
   viewer = v;
   const defaultTools = tools || {};
@@ -26,8 +28,19 @@ const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
   function selectionModel() {
     const selectOptions = drawTools.map((drawTool) => {
       const obj = {};
-      obj.name = toolNames[drawTool];
-      obj.value = drawTool;
+      if (typeof (drawTool) === 'string') {
+        // This is a OL built in interaction, which can be handled without configuration
+        // and for backwards compability is configured using just namne
+        obj.name = toolNames[drawTool];
+        obj.value = drawTool;
+      } else {
+        // This is a custom drawTool implemented externally.
+        // It could be just about any configuration, but must have a toolName
+        // Pass along all config to select.
+        obj.name = toolNames[drawTool.toolName];
+        obj.value = drawTool.toolName;
+      }
+
       return obj;
     });
     return selectOptions;
@@ -53,9 +66,19 @@ const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
       dataAttribute: 'shape',
       active: options.activeTool
     });
-    $(`#${target}`).on('changeDropdown', (e) => {
+    document.getElementById(target).addEventListener('changeDropdown', (e) => {
       e.stopImmediatePropagation(e);
-      dispatcher.emitChangeEditorShapes(e.detail.dataAttribute);
+      switch (e.detail.dataAttribute) {
+        case 'Copy':
+          // Copy tool is handled entirely in copyTool. Only notify edithandler to back off
+          // and call copyTool to do its stuff.
+          dispatcher.emitChangeEditorShapes('custom');
+          copyTool(viewer, layer, drawTools.find((tool) => tool.toolName === 'Copy'));
+          break;
+        default:
+          // This is an OL shape tool. Let edithandler handle it
+          dispatcher.emitChangeEditorShapes(e.detail.dataAttribute);
+      }
       close();
     });
   }
@@ -64,14 +87,17 @@ const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
     if (state) {
       if (drawTools.length > 1) {
         active = true;
-        $(`#${target} ul`).remove();
+        const ul = document.getElementById(target).getElementsByTagName('ul');
+        if (ul.length > 0) {
+          ul[0].parentNode.removeChild(document.getElementById(target).getElementsByTagName('ul')[0]);
+        }
         addDropDown(createDropDownOptions());
-        $(`#${target}`).addClass(activeCls);
+        document.getElementById(target).classList.add(activeCls);
         map.once('click', close);
       }
     } else {
       active = false;
-      $(`#${target}`).removeClass(activeCls);
+      document.getElementById(target).classList.remove(activeCls);
       map.un('click', close);
     }
   }
@@ -81,13 +107,13 @@ const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
       id: target,
       cls: 'o-popover'
     });
-    $('#o-editor-draw').after(popover);
+    const { body: popoverHTML } = new DOMParser().parseFromString(popover, 'text/html');
+    document.getElementById('o-editor-draw').insertAdjacentElement('afterend', popoverHTML.firstElementChild);
     setActive(false);
   }
 
-
   function setDrawTools(layerName) {
-    const layer = viewer.getLayer(layerName);
+    layer = viewer.getLayer(layerName);
     let geometryType;
     drawTools = layer.get('drawTools') || [];
     if (layer.get('drawTools')) {
@@ -100,25 +126,27 @@ const drawToolsSelector = function drawToolsSelector(tools, defaultLayer, v) {
   }
 
   function onChangeEdit(e) {
-    if (e.tool === 'draw' && e.active === true) {
+    const { detail: { tool, active: state } } = e;
+    if (tool === 'draw' && state === true) {
       setDrawTools(currentLayer);
       setActive(true);
-    } else if (e.tool === 'draw' && e.active === false) {
+    } else if (tool === 'draw' && state === false) {
       setActive(false);
     }
     e.stopPropagation();
   }
 
   function onToggleEdit(e) {
-    if (e.tool === 'edit' && e.currentLayer) {
-      currentLayer = e.currentLayer;
+    const { detail: { tool } } = e;
+    if (tool === 'edit' && e.detail.currentLayer) {
+      currentLayer = e.detail.currentLayer;
     }
     e.stopPropagation();
   }
 
   function addListener() {
-    $(document).on('changeEdit', onChangeEdit);
-    $(document).on('toggleEdit', onToggleEdit);
+    document.addEventListener('changeEdit', onChangeEdit);
+    document.addEventListener('toggleEdit', onToggleEdit);
   }
 
   function init() {

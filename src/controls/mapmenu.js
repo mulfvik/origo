@@ -49,7 +49,8 @@ const Mapmenu = function Mapmenu({
     const button = Button({
       cls: 'icon-smaller compact no-grow',
       click,
-      icon
+      icon,
+      title
     });
     const titleCmp = El({ cls: 'grow padding-left', innerHTML: title });
     return Component({
@@ -101,6 +102,7 @@ const Mapmenu = function Mapmenu({
       });
       closeButton = Button({
         cls: 'small round margin-top-small margin-right-small icon-smaller grey-lightest',
+        ariaLabel: 'Stäng',
         icon: closeIcon,
         click() {
           toggle();
@@ -117,7 +119,7 @@ const Mapmenu = function Mapmenu({
         }
       });
       mapMenu = El({
-        cls: 'absolute flex column top-right control box bg-white overflow-hidden faded',
+        cls: 'absolute flex column top-right control box bg-white overflow-hidden z-index-top faded',
         collapseX: true,
         components: [headerComponent, contentComponent]
       });

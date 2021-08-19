@@ -11,7 +11,6 @@ export const renderSvg = function renderSvg(content, {
   return `<svg ${style} height="${sizeOption}" width="${sizeOption}" ${opacity} viewBox="0 0 ${sizeOption} ${sizeOption}">${content}</svg>`;
 };
 
-
 export const renderIcon = {
   Line({
     color,
@@ -85,11 +84,11 @@ export const renderIcon = {
         'margin-top': marginTop
       });
     }
-    return `<img class="${fit}" src="${iconStyle.src}" style="${style}"/>`;
+    return `<img class="${fit}" src="${iconStyle.src}" style="${style}" alt="Lager ikon"/>`;
   },
   Image(iconStyle) {
     const fit = iconStyle.fit ? 'contain' : 'cover';
-    return `<img class="${fit}" src="${iconStyle.src}"/>`;
+    return `<img class="${fit}" src="${iconStyle.src}" alt="Lager ikon"/>`;
   },
   Text(color) {
     const fill = color ? `fill: ${color};` : 'fill: #000;';

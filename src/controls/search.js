@@ -57,7 +57,6 @@ const Search = function Search(options = {}) {
   let containerElement;
   let wrapperElement;
 
-
   function clear() {
     featureInfo.clear();
     if (overlay) {
@@ -91,7 +90,7 @@ const Search = function Search(options = {}) {
       title
     });
     newPopup.setVisibility(true);
-    mapUtils.zoomToExent(new Point(coord), maxZoomLevel);
+    viewer.zoomToExtent(new Point(coord), maxZoomLevel);
   }
 
   /** There are several different ways to handle selected search result.
@@ -124,7 +123,7 @@ const Search = function Search(options = {}) {
       layer = viewer.getLayer(data[layerNameAttribute]);
       id = data[idAttribute];
       getFeature(id, layer, source, projCode, proj)
-        .done((res) => {
+        .then((res) => {
           let featureWkt;
           let coordWkt;
           if (res.length > 0) {
@@ -200,11 +199,11 @@ const Search = function Search(options = {}) {
 
     document.getElementsByClassName('o-search-field')[0].addEventListener('blur', () => {
       document.getElementById(`${wrapperElement.getId()}`).classList.remove('active');
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new CustomEvent('resize'));
     });
     document.getElementsByClassName('o-search-field')[0].addEventListener('focus', () => {
       document.getElementById(`${wrapperElement.getId()}`).classList.add('active');
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new CustomEvent('resize'));
     });
   }
 

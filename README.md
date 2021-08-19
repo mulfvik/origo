@@ -1,3 +1,4 @@
+[![License](https://img.shields.io/badge/license-BSD2-blue.svg?style=flat-square)](https://github.com/origo-map/origo/blob/master/LICENSE.txt)
 [![Build Status](https://travis-ci.org/origo-map/origo.svg?branch=master)](https://travis-ci.org/origo-map/origo)
 # Origo
 
@@ -36,6 +37,7 @@ Not convinced? Or maybe you need some inspiration? Check out these examples of w
  * [Enakartan](http://karta.enkoping.se)
  * [Eskilstunakartan](https://karta.eskilstuna.se)
  * [Hallstakartan](http://karta.hallstahammar.se)
+ * [Haninge kommun webbkarta](https://karta.haninge.se/)
  * [Karlstadskartan](http://gi.karlstad.se)
  * [Mälardalskartan](http://www.malardalskartan.se)
  * [Sigtunakartan](https://karta.sigtuna.se)
@@ -51,7 +53,7 @@ Just follow these three steps and you will be up and running in no time.
 The minimum requirements are:
 
   * [Git](https://git-scm.com/)
-  * [Node.js](https://nodejs.org/) (version 8 or higher is recommended to avoid build problems)
+  * [Node.js](https://nodejs.org/) (version 10 or higher is recommended to avoid build problems)
 
  1. To get your own local copy of Origo use git to clone the repository with the command below:
 

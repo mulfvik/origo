@@ -8,7 +8,9 @@ export default function InputRange(options = {}) {
     maxValue = 100,
     initialValue = (minValue + maxValue) / 2,
     step = 1,
-    style: styleSettings = {}
+    style: styleSettings = {},
+    unit = '',
+    label = ''
   } = options;
 
   const style = createStyle(styleSettings);
@@ -23,9 +25,19 @@ export default function InputRange(options = {}) {
       inputEl.addEventListener('input', this.onInput.bind(this));
       inputEl.addEventListener('change', this.onInput.bind(this)); // ie11
     },
+    setValue(value) {
+      inputEl = document.getElementById(this.getId());
+      if (inputEl !== null) {
+        inputEl.value = value;
+      }
+    },
     render() {
       return `
-      <input id="${this.getId()}" type="range" min="${minValue}" max="${maxValue}" value="${initialValue}" step="${step}" class="${cls}" style="${style}">
+      <div class="flex no-wrap text-smaller align-center">
+        <input id="${this.getId()}" type="range" min="${minValue}" max="${maxValue}" value="${initialValue}" step="${step}" class="${cls}" style="${style}" oninput="this.nextElementSibling.value = this.value">
+        <output class="padding-left-small text-align-center">${initialValue}</output><div>&nbsp;${unit}</div>
+      </div>
+      <div class="text-smaller text-align-center padding-smallpadding-top-smallest width-full">${label}</div>
       `;
     }
   });

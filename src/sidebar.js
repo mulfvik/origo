@@ -1,12 +1,12 @@
-import $ from 'jquery';
-// eslint-disable-next-line import/no-cycle
+import { dom } from './ui';
 import Featureinfo from './featureinfo';
 
 function setVisibility(visible) {
-  if (visible) {
-    $('#o-sidebar').addClass('o-sidebar-show');
-  } else {
-    $('#o-sidebar').removeClass('o-sidebar-show');
+  const sideEl = document.getElementById('o-sidebar');
+  if (visible && sideEl) {
+    sideEl.classList.add('o-sidebar-show');
+  } else if (!visible && sideEl) {
+    sideEl.classList.remove('o-sidebar-show');
   }
 }
 
@@ -16,26 +16,33 @@ function closeSidebar() {
 }
 
 function bindUIActions() {
-  $('#o-sidebar .o-sidebar #o-close-button').on('click', (evt) => {
+  document.querySelector('#o-sidebar .o-sidebar #o-close-button').addEventListener('click', (evt) => {
     closeSidebar();
     evt.preventDefault();
   });
 }
 
 function setTitle(title) {
-  $('#o-sidebar #o-card-title').html(title);
+  const sideti = document.querySelector('#o-sidebar #o-card-title');
+  sideti.innerHTML = title;
+}
+
+function insertContent(content) {
+  const el = document.querySelector('#o-sidebar .o-sidebar .o-card-content');
+  el.innerHTML = content;
 }
 
 function setContent(config) {
-  if (config.title) {
-    $('#o-sidebar .o-sidebar #o-card-title').html(config.title);
+  const { title, content } = config;
+  if (title) {
+    setTitle(title);
   } else {
-    $('#o-sidebar .o-sidebar #o-card-title').html('');
+    setTitle('');
   }
-  if (config.content) {
-    $('#o-sidebar .o-sidebar .o-card-content').html(config.content);
+  if (content) {
+    insertContent(content);
   } else {
-    $('#o-sidebar .o-sidebar .o-card-content').html('');
+    insertContent('');
   }
 }
 
@@ -45,7 +52,7 @@ function init(viewer) {
     <div class="o-sidebar o-card">
         <div class="flex row justify-end">
           <div id="o-card-title" class="justify-start margin-y-smaller margin-left text-weight-bold width-full"></div>
-          <button id="o-close-button" class="small round margin-top-smaller margin-bottom-auto margin-right-small icon-smallest grey-lightest no-shrink">
+          <button id="o-close-button" class="small round margin-top-smaller margin-bottom-auto margin-right-small icon-smallest grey-lightest no-shrink" aria-label="Stäng">
             <span class="icon ">
               <svg>
                 <use xlink:href="#ic_close_24px"></use>
@@ -56,7 +63,7 @@ function init(viewer) {
         <div class="flex column o-card-content"></div>
     </div>
     </div>`;
-  $(`#${mapId}`).append(el);
+  document.getElementById(mapId).appendChild(dom.html(el));
 
   bindUIActions();
 }

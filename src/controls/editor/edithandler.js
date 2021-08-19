@@ -4,7 +4,8 @@ import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
 import Collection from 'ol/Collection';
 import Feature from 'ol/Feature';
-import $ from 'jquery';
+import { LineString } from 'ol/geom';
+import { noModifierKeys } from 'ol/events/condition';
 import { Modal } from '../../ui';
 import store from './editsstore';
 import generateUUID from '../../utils/generateuuid';
@@ -14,7 +15,10 @@ import editForm from './editform';
 import imageresizer from '../../utils/imageresizer';
 import getImageOrientation from '../../utils/getimageorientation';
 import shapes from './shapes';
+import searchList from './addons/searchList/searchList';
 import validate from '../../utils/validate';
+import slugify from '../../utils/slugify';
+import topology from '../../utils/topology';
 
 const editsStore = store();
 let editLayers = {};
@@ -36,6 +40,17 @@ let snap;
 let viewer;
 let featureInfo;
 let modal;
+let sList;
+/** Roll back copy of geometry that is currently being modified (if any) */
+let modifyGeometry;
+/** The feature that is currently being drawn (if any). Must be reset when draw is finished or abandoned as OL resuses its feature and
+ *  we must detect when a new drawing is started */
+let drawFeature;
+let validateOnDraw;
+let allowDelete;
+let allowCreate;
+let allowEditAttributes;
+let allowEditGeometry;
 
 function isActive() {
   if (modify === undefined || select === undefined) {
@@ -53,13 +68,18 @@ function setActive(editType) {
       break;
     case 'draw':
       draw.setActive(true);
-      modify.setActive(true);
+      if (modify) modify.setActive(true);
+      select.setActive(false);
+      break;
+    case 'custom':
+      draw.setActive(false);
+      if (modify) modify.setActive(false);
       select.setActive(false);
       break;
     default:
       draw.setActive(false);
       hasDraw = false;
-      modify.setActive(true);
+      if (modify) modify.setActive(true);
       select.setActive(true);
       break;
   }
@@ -133,15 +153,32 @@ function saveFeature(change) {
 
 function onModifyEnd(evt) {
   const feature = evt.features.item(0);
-  saveFeature({
-    feature,
-    layerName: currentLayer,
-    action: 'update'
-  });
+  // Roll back modification if the resulting geometry was invalid
+  if (validateOnDraw && !topology.isGeometryValid(feature.getGeometry())) {
+    feature.setGeometry(modifyGeometry);
+  } else {
+    saveFeature({
+      feature,
+      layerName: currentLayer,
+      action: 'update'
+    });
+  }
 }
 
-function onDrawEnd(evt) {
-  const feature = evt.feature;
+function onModifyStart(evt) {
+  // Get a copy of the geometry before modification
+  if (validateOnDraw) {
+    modifyGeometry = evt.features.item(0).getGeometry().clone();
+  }
+}
+
+//
+
+/**
+ * Helper for adding new features. Typically called from various eventhandlers
+ * @param {Feature} feature The feature to add.
+ */
+function addFeature(feature) {
   const layer = viewer.getLayer(currentLayer);
   const defaultAttributes = getDefaultValues(layer.get('attributes'));
   feature.setProperties(defaultAttributes);
@@ -159,6 +196,162 @@ function onDrawEnd(evt) {
     // eslint-disable-next-line no-use-before-define
     editAttributes(feature);
   }
+}
+
+// Handler for OL Draw interaction
+function onDrawEnd(evt) {
+  const f = evt.feature;
+
+  // Reset pointer to drawFeature, OL resuses the same feature
+  drawFeature = null;
+
+  // WORKAROUND OL 6.5.0: OL have two identical vertices in the beginning of a LineString or Polygon when drawing freehand, and that would
+  // be considered as an invalid geometry.
+  // Also when drawing freehand (epsecially using touch screen) there may be identical vertices
+  // Remove identical vertices by doing a simplify using a small tolerance. Not the most efficient, but it's only one row for me to write and
+  // freehand produces so many vertices that a clean up is still a good idea.
+  f.setGeometry(f.getGeometry().simplify(0.00001));
+
+  // If live validation did its job, we should not have to validate here, but freehand bypasses all controls and we can't tell if freehand was used.
+  if (validateOnDraw && !topology.isGeometryValid(f.getGeometry())) {
+    alert('Kan ej spara, geometrin är ogiltig');
+  } else {
+    addFeature(evt.feature);
+  }
+}
+
+/**
+ * Called when the startdraw-event fires.
+ * @param {any} evt
+ */
+function onDrawStart(evt) {
+  // Stash a pointer to the feature being drawn for later use
+  // It is constantly being updated when drawing using a mouse.
+  drawFeature = evt.feature;
+}
+
+/**
+ * Called when draw is aborted from OL
+ * */
+function onDrawAbort() {
+  drawFeature = null;
+}
+/**
+ * Called by OL on mouse down to check if a vertex should be added
+ * @param {any} evt The MapBrowserEvent as received by Draw
+ * @returns true if the point should be added, false otherwise
+ */
+function conditionCallback(evt) {
+  // Check modifiers
+  if (!noModifierKeys(evt)) {
+    return false;
+  }
+  // This function is called before onDrawStart, so first time there is no drawFeature as no point has been allowed
+  // Second time there will be two points (first click and second click)
+  // Third time there will be three points for line and four points for poly as a poly is auto closed.
+  // When using touch, the current point is a copy of the previous, as it has not been moved yet. Clicked position comes in the event.
+  // when using mouse, the current point is updated continously on mousemove, so it is the same as the click event
+  // If this function returns true, the action is allowed and the clicked point is added t the draw.
+  // If it returns false, the click is regarded as never happened, which will affect the possibility to stop drawing as well.
+  if (!drawFeature) {
+    // First call. Here we could check event to see if it is possible to start a new geometry here (overlapping rules, holes, multipolygon self overlap etc)
+    return true;
+  }
+
+  const isTouch = evt.originalEvent.pointerType === 'touch';
+  let coords;
+  let minPointsToClose = 3;
+  // Strangely enough, we don't get what has actually been drawn in the event. Pick up pointer to sketch from our own state
+  // The sketch feature is what is drawn on the screen, not the actual feature, so It can only be poly, line or point. No multi-variant as
+  // draw interaction can't make them.
+  if (drawFeature.getGeometry().getType() === 'Polygon') {
+    // OL adds a closing vertex when more than two points. Remove it in validation
+    const polyCoords = drawFeature.getGeometry().getCoordinates()[0];
+    const arrayend = polyCoords.length > 2 ? -1 : polyCoords.length;
+    coords = polyCoords.slice(0, arrayend);
+  }
+  if (drawFeature.getGeometry().getType() === 'LineString') {
+    minPointsToClose = 2;
+    coords = drawFeature.getGeometry().getCoordinates().slice();
+  }
+  if (coords) {
+    if (isTouch) {
+      // Touch has a duplicate vertex as placeholder for clicked coordinate. Remove that and add the clicked coordinate, as it is not included in geom for touch
+      coords.pop();
+      coords.push(evt.coordinate);
+    }
+
+    // When trying to self auto close there can be two identical coords in the end if clicked on the exact same pixel. Allow that and make finishCondition fail instead of checking if we will succeed
+    // This has the drawback that it is not possible to finish with an invalid last point that will be removed anyway.
+    // Otherwise we have to implement the same clickTolerance as draw to distinguish between a new point and auto close or always try to autoclose and save that
+    // result as a state to check in finishCondition.
+    // If we got here we have at least two coords, so indexing -2 is safe
+    if (coords[coords.length - 1][0] === coords[coords.length - 2][0] && coords[coords.length - 1][1] === coords[coords.length - 2][1]) {
+      if (coords.length <= minPointsToClose) {
+        // Cant' put second point on first, and finishCondition will not be called on too few points
+        return false;
+      }
+      // No need to validate, it was valid before and no new point is added, we just for sure will try to finish.
+      return true;
+    }
+    // Validate only last added segment
+    return !topology.isSelfIntersecting(new LineString(coords), true);
+  }
+
+  return true;
+}
+
+/**
+ * Called by OL on mouse down to check if a sketch could be finished
+ * @param {any} evt The MapBrowserEvent as received by Draw
+ * @returns true if the feature can be completed , false otherwise
+ */
+function finishConditionCallback() {
+  // Only necessary to check polygons. Lines do not auto close, so all points are already checked.
+  if (validateOnDraw && drawFeature && drawFeature.getGeometry().getType() === 'Polygon') {
+    const coords = drawFeature.getGeometry().getCoordinates()[0];
+    // remove second last coord. It is the last clicked position. If this function got called, OL deemed it close enough to either start or last point
+    // to finish sketch and will not be a part of the final geometry, so remove it.
+    const last = coords.pop();
+    coords.pop();
+    coords.push(last);
+    const line = new LineString(coords);
+    const isValid = !topology.isSelfIntersecting(line);
+
+    if (!isValid) {
+      // Topology can only be invalid if trying to auto close, but to not mess with the logic in Draw for clickTolerance,
+      // we allow the click events and try to deal with it later.
+      // The only way to become invalid here is because auto close, and if that failed remove last point as it will be double there.
+      // Non auto close are blocked in conditionCallback.
+      // Must schedule to make draw finish execution first.
+      setTimeout(() => draw.removeLastPoint(), 0);
+    }
+    return isValid;
+  }
+  return true;
+}
+
+// Handler for external draw. It just adds a new feature to the layer, no questions asked.
+// Intended usage is creating a feature in a drawTool custom tool
+// event contains the new feature to be added.
+// if no feature is provided action is aborted.
+function onCustomDrawEnd(e) {
+  // Check if a feature has been created, or tool canceled
+  const feature = e.detail.feature;
+  if (feature) {
+    if (feature.getGeometry().getType() !== editLayers[currentLayer].get('geometryType')) {
+      alert('Kan inte lägga till en geometri av den typen i det lagret');
+    } else {
+      // Must move geometry to correct property. Setting geometryName is not enough.
+      if (editLayers[currentLayer].get('geometryName') !== feature.getGeometryName()) {
+        feature.set(editLayers[currentLayer].get('geometryName'), feature.getGeometry());
+        feature.unset(feature.getGeometryName());
+        e.detail.feature.setGeometryName(editLayers[currentLayer].get('geometryName'));
+      }
+      addFeature(e.detail.feature);
+    }
+  }
+  setActive();
 }
 
 function addSnapInteraction(sources) {
@@ -191,18 +384,37 @@ function removeInteractions() {
   }
 }
 
+function setAllowedOperations() {
+  const allowedOperations = editLayers[currentLayer].get('allowedEditOperations');
+  if (allowedOperations) {
+    allowEditGeometry = allowedOperations.includes('updateGeometry');
+    allowEditAttributes = allowedOperations.includes('updateAttributes');
+    allowCreate = allowedOperations.includes('create');
+    allowDelete = allowedOperations.includes('delete');
+  } else {
+    // For backwards compability, allow everything if allowedEditOperations is not in config.
+    allowEditGeometry = true;
+    allowEditAttributes = true;
+    allowCreate = true;
+    allowDelete = true;
+  }
+}
+
 function setInteractions(drawType) {
   const editLayer = editLayers[currentLayer];
   editSource = editLayer.getSource();
   attributes = editLayer.get('attributes');
   title = editLayer.get('title') || 'Information';
   const drawOptions = {
-    source: editSource,
     type: editLayer.get('geometryType'),
     geometryName: editLayer.get('geometryName')
   };
   if (drawType) {
-    $.extend(drawOptions, shapes(drawType));
+    Object.assign(drawOptions, shapes(drawType));
+  }
+  if (validateOnDraw) {
+    drawOptions.condition = conditionCallback;
+    drawOptions.finishCondition = finishConditionCallback;
   }
   removeInteractions();
   draw = new Draw(drawOptions);
@@ -211,14 +423,22 @@ function setInteractions(drawType) {
   select = new Select({
     layers: [editLayer]
   });
-  modify = new Modify({
-    features: select.getFeatures()
-  });
+  if (allowEditGeometry) {
+    modify = new Modify({
+      features: select.getFeatures()
+    });
+    map.addInteraction(modify);
+    modify.on('modifyend', onModifyEnd, this);
+    modify.on('modifystart', onModifyStart, this);
+  }
+
   map.addInteraction(select);
-  map.addInteraction(modify);
+
   map.addInteraction(draw);
-  modify.on('modifyend', onModifyEnd, this);
+
   draw.on('drawend', onDrawEnd, this);
+  draw.on('drawstart', onDrawStart, this);
+  draw.on('drawabort', onDrawAbort, this);
   setActive();
 
   // If snap should be active then add snap internactions for all snap layers
@@ -233,6 +453,7 @@ function setInteractions(drawType) {
 
 function setEditLayer(layerName) {
   currentLayer = layerName;
+  setAllowedOperations();
   setInteractions();
 }
 
@@ -304,13 +525,24 @@ function startDraw() {
 
 function cancelDraw() {
   setActive();
+  if (hasDraw) {
+    draw.abortDrawing();
+  }
+
+  drawFeature = null;
   hasDraw = false;
   dispatcher.emitChangeEdit('draw', false);
 }
 
+// Event from drawTools
 function onChangeShape(e) {
-  setInteractions(e.shape);
-  startDraw();
+  // Custom shapes are handled entirely in drawTools, just wait for a feature to land in onCustomDrawEnd
+  if (e.detail.shape === 'custom') {
+    setActive('custom');
+  } else {
+    setInteractions(e.detail.shape);
+    startDraw();
+  }
 }
 
 function cancelAttribute() {
@@ -333,52 +565,52 @@ function attributesSaveHandler(feature, formEl) {
 }
 
 function onAttributesSave(feature, attrs) {
-  $('#o-save-button').on('click', (e) => {
+  document.getElementById('o-save-button').addEventListener('click', (e) => {
     const editEl = {};
     const valid = {};
-    let fileReader;
-    let input;
-    let file;
+    const fileReaders = [];
 
     // Read values from form
     attrs.forEach((attribute) => {
       // Get the input container class
-      const containerClass = `.${attribute.elId.slice(1)}`;
+      const containerClass = `.${attribute.elId}`;
       // Get the input attributes
-      const inputType = $(attribute.elId).attr('type');
-      const inputValue = $(attribute.elId).val();
-      const inputName = $(attribute.elId).attr('name');
-      const inputId = $(attribute.elId).attr('id');
-      const inputRequired = $(attribute.elId).attr('required');
+      const inputType = document.getElementById(attribute.elId).getAttribute('type');
+      const inputValue = document.getElementById(attribute.elId).value;
+      const inputName = document.getElementById(attribute.elId).getAttribute('name');
+      const inputId = document.getElementById(attribute.elId).getAttribute('id');
+      const inputRequired = document.getElementById(attribute.elId).getAttribute('required');
 
       // If hidden element it should be excluded
-      if ($(containerClass).hasClass('o-hidden') === false) {
+      if (!document.querySelector(containerClass) || document.querySelector(containerClass).classList.contains('o-hidden') === false) {
         // Check if checkbox. If checkbox read state.
         if (inputType === 'checkbox') {
-          editEl[attribute.name] = $(attribute.elId).is(':checked') ? 1 : 0;
+          editEl[attribute.name] = document.getElementById(attribute.elId).checked ? 1 : 0;
         } else { // Read value from input text, textarea or select
           editEl[attribute.name] = inputValue;
         }
       }
       // Check if file. If file, read and trigger resize
       if (inputType === 'file') {
-        input = $(attribute.elId)[0];
-        file = input.files[0];
+        const input = document.getElementById(attribute.elId);
+        const file = input.files[0];
 
         if (file) {
-          fileReader = new FileReader();
+          const fileReader = new FileReader();
           fileReader.onload = () => {
             getImageOrientation(file, (orientation) => {
               imageresizer(fileReader.result, attribute, orientation, (resized) => {
                 editEl[attribute.name] = resized;
-                $(document).trigger('imageresized');
+                const imageresized = new CustomEvent('imageresized');
+                document.dispatchEvent(imageresized);
               });
             });
           };
 
           fileReader.readAsDataURL(file);
+          fileReaders.push(fileReader);
         } else {
-          editEl[attribute.name] = $(attribute.elId).attr('value');
+          editEl[attribute.name] = document.getElementById(attribute.elId).getAttribute('value');
         }
       }
 
@@ -394,7 +626,11 @@ function onAttributesSave(feature, attrs) {
       valid.required = inputRequired && inputValue === '' ? false : inputValue;
       if (!valid.required && inputRequired && inputValue === '') {
         if (!requiredMsg) {
-          requiredOn.insertAdjacentHTML('afterend', `<div class="o-${inputId}-requiredMsg errorMsg fade-in padding-bottom-small">Obligatoriskt fält</div>`);
+          if (requiredOn.getAttribute('class') === 'awesomplete') {
+            requiredOn.parentNode.insertAdjacentHTML('afterend', `<div class="o-${inputId}-requiredMsg errorMsg fade-in padding-bottom-small">Obligatoriskt fält</div>`);
+          } else {
+            requiredOn.insertAdjacentHTML('afterend', `<div class="o-${inputId}-requiredMsg errorMsg fade-in padding-bottom-small">Obligatoriskt fält</div>`);
+          }
         }
       } else if (requiredMsg) {
         requiredMsg.remove();
@@ -462,7 +698,7 @@ function onAttributesSave(feature, attrs) {
           }
           break;
         case 'datetime':
-          valid.datetime = validate.datetime(inputValue) && inputValue.length === 19 ? inputValue : false;
+          valid.datetime = validate.datetime(inputValue) ? inputValue : false;
           if (!valid.datetime) {
             if (!errorMsg) {
               errorOn.insertAdjacentHTML('afterend', `<div class="o-${inputId} errorMsg fade-in padding-bottom-small">${errorText}</div>`);
@@ -472,7 +708,7 @@ function onAttributesSave(feature, attrs) {
           }
           break;
         case 'date':
-          valid.date = validate.date(inputValue) && inputValue.length === 10 ? inputValue : false;
+          valid.date = validate.date(inputValue) ? inputValue : false;
           if (!valid.date && inputValue !== '') {
             if (!errorMsg) {
               errorOn.insertAdjacentHTML('afterend', `<div class="o-${inputId} errorMsg fade-in padding-bottom-small">${errorText}</div>`);
@@ -482,7 +718,7 @@ function onAttributesSave(feature, attrs) {
           }
           break;
         case 'time':
-          valid.time = validate.time(inputValue) && inputValue.length === 8 ? inputValue : false;
+          valid.time = validate.time(inputValue) ? inputValue : false;
           if (!valid.time) {
             if (!errorMsg) {
               errorOn.insertAdjacentHTML('afterend', `<div class="o-${inputId} errorMsg fade-in padding-bottom-small">${errorText}</div>`);
@@ -511,6 +747,19 @@ function onAttributesSave(feature, attrs) {
             errorMsg.remove();
           }
           break;
+        case 'searchList':
+          if (attribute.required || false) {
+            const { list } = attribute;
+            valid.searchList = validate.searchList(inputValue, list) || inputValue === '' ? inputValue : false;
+            if (!valid.searchList && inputValue !== '') {
+              errorOn.parentElement.insertAdjacentHTML('afterend', `<div class="o-${inputId} errorMsg fade-in padding-bottom-small">${errorText}</div>`);
+            } else if (errorMsg) {
+              errorMsg.remove();
+            }
+          } else {
+            valid.searchList = true;
+          }
+          break;
         default:
       }
       valid.validates = !Object.values(valid).includes(false);
@@ -518,16 +767,16 @@ function onAttributesSave(feature, attrs) {
 
     // If valid, continue
     if (valid.validates) {
-      if (fileReader && fileReader.readyState === 1) {
-        $(document).on('imageresized', () => {
+      if (fileReaders.length > 0 && fileReaders.every(reader => reader.readyState === 1)) {
+        document.addEventListener('imageresized', () => {
           attributesSaveHandler(feature, editEl);
         });
       } else {
         attributesSaveHandler(feature, editEl);
       }
 
+      document.getElementById('o-save-button').blur();
       modal.closeModal();
-      $('#o-save-button').blur();
       e.preventDefault();
     }
   });
@@ -535,12 +784,19 @@ function onAttributesSave(feature, attrs) {
 
 function addListener() {
   const fn = (obj) => {
-    $(obj.elDependencyId).on(obj.eventType, () => {
-      const containerClass = `.${obj.elId.slice(1)}`;
-      if ($(`${obj.elDependencyId} option:selected`).text() === obj.requiredVal) {
-        $(containerClass).removeClass('o-hidden');
+    document.getElementById(obj.elDependencyId).addEventListener(obj.eventType, () => {
+      const containerClass = `.${obj.elId}`;
+      if (obj.requiredVal.startsWith('[')) {
+        const tmpArray = obj.requiredVal.replace('[', '').replace(']', '').split(',');
+        if (tmpArray.includes(document.getElementById(obj.elDependencyId).value)) {
+          document.querySelector(containerClass).classList.remove('o-hidden');
+        } else {
+          document.querySelector(containerClass).classList.add('o-hidden');
+        }
+      } else if (document.getElementById(obj.elDependencyId).value === obj.requiredVal) {
+        document.querySelector(containerClass).classList.remove('o-hidden');
       } else {
-        $(containerClass).addClass('o-hidden');
+        document.querySelector(containerClass).classList.add('o-hidden');
       }
     });
   };
@@ -551,22 +807,23 @@ function addListener() {
 function addImageListener() {
   const fn = (obj) => {
     const fileReader = new FileReader();
-    const containerClass = `.${obj.elId.slice(1)}`;
-    $(obj.elId).on('change', (ev) => {
+    const containerClass = `.${obj.elId}`;
+    document.querySelector(`#${obj.elId}`).addEventListener('change', (ev) => {
       if (ev.target.files && ev.target.files[0]) {
-        $(`${containerClass} img`).removeClass('o-hidden');
-        $(`${containerClass} input[type=button]`).removeClass('o-hidden');
+        document.querySelector(`${containerClass} img`).classList.remove('o-hidden');
+        document.querySelector(`${containerClass} input[type=button]`).classList.remove('o-hidden');
         fileReader.onload = (e) => {
-          $(`${containerClass} img`).attr('src', e.target.result);
+          document.querySelector(`${containerClass} img`).setAttribute('src', e.target.result);
         };
         fileReader.readAsDataURL(ev.target.files[0]);
       }
     });
 
-    $(`${containerClass} input[type=button]`).on('click', (e) => {
-      $(obj.elId).attr('value', '');
-      $(`${containerClass} img`).addClass('o-hidden');
-      $(e.target).addClass('o-hidden');
+    document.querySelector(`${containerClass} input[type=button]`).addEventListener('click', (e) => {
+      document.getElementById(obj.elId).setAttribute('value', '');
+      document.getElementById(obj.elId).value = '';
+      document.querySelector(`${containerClass} img`).classList.add('o-hidden');
+      e.target.classList.add('o-hidden');
     });
   };
 
@@ -592,7 +849,7 @@ function editAttributes(feat) {
       // Create an array of defined attributes and corresponding values from selected feature
       attributeObjects = attributes.map((attributeObject) => {
         const obj = {};
-        $.extend(obj, attributeObject);
+        Object.assign(obj, attributeObject);
         obj.val = feature.get(obj.name) !== undefined ? feature.get(obj.name) : '';
         if ('constraint' in obj) {
           const constraintProps = obj.constraint.split(':');
@@ -600,20 +857,27 @@ function editAttributes(feat) {
             obj.eventType = constraintProps[0];
             obj.dependencyVal = feature.get(constraintProps[1]);
             obj.requiredVal = constraintProps[2];
-            obj.isVisible = obj.dependencyVal === obj.requiredVal;
+            if (constraintProps[2].startsWith('[')) {
+              const tmpArray = constraintProps[2].replace('[', '').replace(']', '').split(',');
+              if (tmpArray.includes(obj.dependencyVal)) {
+                obj.isVisible = true;
+              }
+            } else {
+              obj.isVisible = obj.dependencyVal === obj.requiredVal;
+            }
             obj.addListener = addListener();
-            obj.elId = `#input-${obj.name}-${obj.requiredVal}`;
-            obj.elDependencyId = `#input-${constraintProps[1]}`;
+            obj.elId = `input-${obj.name}-${slugify(obj.requiredVal)}`;
+            obj.elDependencyId = `input-${constraintProps[1]}`;
           } else {
             alert('Villkor verkar inte vara rätt formulerat. Villkor formuleras enligt principen change:attribute:value');
           }
         } else if (obj.type === 'image') {
           obj.isVisible = true;
-          obj.elId = `#input-${obj.name}`;
+          obj.elId = `input-${obj.name}`;
           obj.addListener = addImageListener();
         } else {
           obj.isVisible = true;
-          obj.elId = `#input-${obj.name}`;
+          obj.elId = `input-${obj.name}`;
         }
 
         obj.formElement = editForm(obj);
@@ -642,33 +906,36 @@ function editAttributes(feat) {
 }
 
 function onToggleEdit(e) {
+  const { detail: { tool } } = e;
   e.stopPropagation();
-  if (e.tool === 'draw') {
+  if (tool === 'draw' && allowCreate) {
     if (hasDraw === false) {
       setInteractions();
       startDraw();
     } else {
       cancelDraw();
     }
-  } else if (e.tool === 'attribute') {
+  } else if (tool === 'attribute' && allowEditAttributes) {
     if (hasAttribute === false) {
       editAttributes();
+      sList = sList || new searchList();
     } else {
       cancelAttribute();
     }
-  } else if (e.tool === 'delete') {
+  } else if (tool === 'delete' && allowDelete) {
     onDeleteSelected();
-  } else if (e.tool === 'edit') {
-    setEditLayer(e.currentLayer);
-  } else if (e.tool === 'cancel') {
+  } else if (tool === 'edit') {
+    setEditLayer(e.detail.currentLayer);
+  } else if (tool === 'cancel') {
     removeInteractions();
-  } else if (e.tool === 'save') {
+  } else if (tool === 'save') {
     saveFeatures();
   }
 }
 
 function onChangeEdit(e) {
-  if (e.tool !== 'draw' && e.active) {
+  const { detail: { tool, active } } = e;
+  if (tool !== 'draw' && active) {
     cancelDraw();
   }
 }
@@ -692,7 +959,9 @@ export default function editHandler(options, v) {
 
   autoSave = options.autoSave;
   autoForm = options.autoForm;
-  $(document).on('toggleEdit', onToggleEdit);
-  $(document).on('changeEdit', onChangeEdit);
-  $(document).on('editorShapes', onChangeShape);
+  validateOnDraw = options.validateOnDraw;
+  document.addEventListener('toggleEdit', onToggleEdit);
+  document.addEventListener('changeEdit', onChangeEdit);
+  document.addEventListener('editorShapes', onChangeShape);
+  document.addEventListener('customDrawEnd', onCustomDrawEnd);
 }

@@ -36,7 +36,6 @@ function showInfowindow() {
   mainContainer.classList.remove('hidden');
 }
 
-
 function makeElementDraggable(elm) {
   const elmnt = elm;
   let pos1 = 0;
@@ -187,8 +186,8 @@ function createToaster(status, message) {
   const toaster = document.createElement('div');
   toaster.style.fontSize = '12px';
   if (!message) {
-    const successMsg = exportOptions.toasterMessages && exportOptions.toasterMessages.success ? exportOptions.toasterMessages.success : 'Det gick bra!';
-    const failMsg = exportOptions.toasterMessages && exportOptions.toasterMessages.fail ? exportOptions.toasterMessages.fail : 'Något gick fel, kontakta administratören.';
+    const successMsg = exportOptions.toasterMessages && exportOptions.toasterMessages.success ? exportOptions.toasterMessages.success : 'Success!';
+    const failMsg = exportOptions.toasterMessages && exportOptions.toasterMessages.fail ? exportOptions.toasterMessages.fail : 'Sorry, something went wrong. Please contact your administrator';
     msg = status === 'ok' ? successMsg : failMsg;
   }
   // It cannot be appended to infowindow bcuz in mobile tranform:translate is used css, and it causes that position: fixed loses its effect.
@@ -215,8 +214,8 @@ function createSubexportComponent(selectionGroup) {
   let layerSpecificExportOptions;
   const simpleExportLayers = exportOptions.simpleExportLayers ? exportOptions.simpleExportLayers : [];
   const simpleExportUrl = exportOptions.simpleExportUrl;
-  const simpleExportButtonText = exportOptions.simpleExportButtonText || 'Exporera alla features i urvalet';
-  const exportedFileName = exportOptions.exportedFileName || 'ExportedFeatures';
+  const simpleExportButtonText = exportOptions.simpleExportButtonText || 'Export';
+  const exportedFileName = exportOptions.exportedFileName;
   const activeLayer = viewer.getLayer(selectionGroup);
 
   const subexportContainer = document.createElement('div');
@@ -233,11 +232,11 @@ function createSubexportComponent(selectionGroup) {
   if (layerSpecificExportOptions) {
     const exportUrls = layerSpecificExportOptions.exportUrls || [];
     const attributesToSendToExportPerLayer = layerSpecificExportOptions.attributesToSendToExport;
-    const layerSpecificExportedFileName = layerSpecificExportOptions.exportedFileName || exportedFileName;
 
     exportUrls.forEach((obj) => {
-      const buttonText = obj.buttonText || 'External Call';
+      const buttonText = obj.buttonText || 'Export';
       const url = obj.url;
+      const layerSpecificExportedFileName = obj.exportedFileName;
       const attributesToSendToExport = obj.attributesToSendToExport ? obj.attributesToSendToExport : attributesToSendToExportPerLayer;
       const exportBtn = createExportButton(buttonText);
       const btn = exportBtn.querySelector('button');

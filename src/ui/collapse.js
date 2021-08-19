@@ -7,6 +7,7 @@ export default function Collapse(options = {}) {
     expanded = false
   } = options;
   const {
+    legendCollapse = false,
     bubble = false,
     cls = '',
     collapseX = true,
@@ -18,14 +19,16 @@ export default function Collapse(options = {}) {
     contentStyle: contentStyleOptions = {},
     data = {},
     style: styleSettings,
-    tagName = 'div'
+    tagName = 'div',
+    containerCls = 'collapse-container',
+    mainCls = 'collapse'
   } = options;
 
   const style = createStyle(styleSettings);
   const contentStyle = createStyle(contentStyleOptions);
   const toggleEvent = 'collapse:toggle';
   const collapseEvent = 'collapse:collapse';
-  const containerId = cuid();
+  let containerId = cuid();
   let collapseEl;
   let containerEl;
   let contentEl;
@@ -57,7 +60,6 @@ export default function Collapse(options = {}) {
       const currentWidth = contentEl.scrollWidth;
       const elementTransition = containerEl.style.transition;
       containerEl.style.transition = '';
-
       requestAnimationFrame(() => {
         if (collapseY) containerEl.style.height = `${currentHeight}px`;
         if (collapseX) containerEl.style.width = `${currentWidth}px`;
@@ -110,9 +112,12 @@ export default function Collapse(options = {}) {
       const isExpanded = expanded ? 'expanded' : '';
       const header = headerComponent ? headerComponent.render() : '';
       const footer = footerComponent ? footerComponent.render() : '';
-      return `<${tagName} id="${this.getId()}" class="collapse ${cls} ${isExpanded}" style="${style}">
+      if (legendCollapse) {
+        containerId = 'legendCollapse';
+      }
+      return `<${tagName} id="${this.getId()}" class="${mainCls} ${cls} ${isExpanded}" style="${style}">
                 ${header}
-                <div id="${containerId}" class="collapse-container ${contentCls}" style="${height} ${width} ${contentStyle}">
+                <div id="${containerId}" class="${containerCls} ${contentCls}" style="${height} ${width} ${contentStyle}">
                   ${contentComponent.render()}
                 </div>
                 ${footer}

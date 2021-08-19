@@ -15,9 +15,11 @@ const Group = function Group(options = {}, viewer) {
     title,
     name,
     parent,
+    abstract,
     position = 'top',
     type = 'group',
-    autoExpand = true
+    autoExpand = true,
+    exclusive = false
   } = options;
 
   const stateCls = {
@@ -31,7 +33,7 @@ const Group = function Group(options = {}, viewer) {
   let groupEl;
 
   const listCls = type === 'grouplayer' ? 'divider-start padding-left padding-top-small' : '';
-  const groupList = GroupList({ viewer, cls: listCls });
+  const groupList = GroupList({ viewer, cls: listCls, abstract });
   visibleState = groupList.getVisible();
 
   const getEl = () => groupEl;
@@ -45,7 +47,7 @@ const Group = function Group(options = {}, viewer) {
 
   const getVisible = () => visibleState;
 
-  const tickButton = Button({
+  const tickButton = !exclusive ? Button({
     cls: 'icon-smaller round small',
     click() {
       const eventType = visibleState === 'all' ? 'untick:all' : 'tick:all';
@@ -59,9 +61,10 @@ const Group = function Group(options = {}, viewer) {
     iconCls: '',
     state: visibleState,
     style: {
-      'align-self': 'flex-end'
+      'align-self': 'flex-end',
+      cursor: 'pointer'
     }
-  });
+  }) : false;
 
   const SubGroupHeader = function SubGroupHeader() {
     const expandButton = Button({
@@ -76,7 +79,9 @@ const Group = function Group(options = {}, viewer) {
     return Component({
       onInit() {
         this.addComponent(expandButton);
-        this.addComponent(tickButton);
+        if (tickButton) {
+          this.addComponent(tickButton);
+        }
       },
       onRender() {
         this.dispatch('render');
@@ -95,7 +100,7 @@ const Group = function Group(options = {}, viewer) {
                    ${expandButton.render()}
                     <span class="grow padding-x-small">${title}</span>
                 </div>
-                ${tickButton.render()}
+                ${tickButton ? tickButton.render() : ''}
               </div>`;
       }
     });
@@ -149,12 +154,23 @@ const Group = function Group(options = {}, viewer) {
     groupList.removeGroup(group);
   };
 
+  const updateGroupIndication = function updateGroupIndication() {
+    if (groupList.getVisible() === 'none') {
+      groupEl.firstElementChild.classList.add('no-group-indication');
+      groupEl.firstElementChild.classList.remove('group-indication');
+    } else {
+      groupEl.firstElementChild.classList.add('group-indication');
+      groupEl.firstElementChild.classList.remove('no-group-indication');
+    }
+  };
+
   return Component({
     addOverlay,
     getEl,
     getOverlayList,
     getVisible,
     name,
+    exclusive,
     parent,
     title,
     type,
@@ -176,13 +192,17 @@ const Group = function Group(options = {}, viewer) {
       this.addComponent(collapse);
       this.on('add:overlay', () => {
         visibleState = groupList.getVisible();
-        tickButton.setState(stateCls[visibleState]);
-        tickButton.setIcon(getCheckIcon(visibleState));
+        if (tickButton) {
+          tickButton.setState(stateCls[visibleState]);
+          tickButton.setIcon(getCheckIcon(visibleState));
+        }
       });
       this.on('add:group', () => {
         visibleState = groupList.getVisible();
-        tickButton.setState(stateCls[visibleState]);
-        tickButton.setIcon(getCheckIcon(visibleState));
+        if (tickButton) {
+          tickButton.setState(stateCls[visibleState]);
+          tickButton.setIcon(getCheckIcon(visibleState));
+        }
       });
 
       // only listen to tick changes for subgroups
@@ -213,7 +233,9 @@ const Group = function Group(options = {}, viewer) {
           });
           const groups = groupList.getGroups();
           groups.forEach((group) => {
-            group.dispatch('tick:all');
+            if (!group.exclusive) {
+              group.dispatch('tick:all');
+            }
           });
           if (visibleState !== 'all') {
             this.dispatch('change:visible', { state: 'all' });
@@ -227,7 +249,17 @@ const Group = function Group(options = {}, viewer) {
     },
     onRender() {
       groupEl = document.getElementById(collapse.getId());
-
+      if (viewer.getControlByName('legend').getuseGroupIndication() && type === 'group') {
+        updateGroupIndication();
+        this.on('add:overlay', () => {
+          updateGroupIndication();
+        });
+        groupEl.addEventListener('change:visible', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          updateGroupIndication();
+        });
+      }
       // only listen to tick changes for subgroups
       if (type === 'grouplayer') {
         groupEl.addEventListener('tick:all', (e) => {
@@ -245,8 +277,10 @@ const Group = function Group(options = {}, viewer) {
           const newVisibleState = groupList.getVisible();
           if (visibleState !== newVisibleState) {
             visibleState = newVisibleState;
-            tickButton.dispatch('change', { icon: getCheckIcon(visibleState) });
-            tickButton.setState(stateCls[visibleState]);
+            if (tickButton) {
+              tickButton.dispatch('change', { icon: getCheckIcon(visibleState) });
+              tickButton.setState(stateCls[visibleState]);
+            }
           } else {
             e.stopPropagation();
           }

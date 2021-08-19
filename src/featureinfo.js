@@ -1,10 +1,7 @@
-import 'owl.carousel';
 import Overlay from 'ol/Overlay';
-import $ from 'jquery';
+import OGlide from './oglide';
 import { Component, Modal } from './ui';
-// eslint-disable-next-line import/no-cycle
 import Popup from './popup';
-// eslint-disable-next-line import/no-cycle
 import sidebar from './sidebar';
 import maputils from './maputils';
 import featurelayer from './featurelayer';
@@ -27,7 +24,8 @@ const Featureinfo = function Featureinfo(options = {}) {
     pinsStyle: pinStyleOptions = styleTypes.getStyle('pin'),
     savedPin: savedPinOptions,
     savedSelection,
-    selectionStyles: selectionStylesOptions
+    selectionStyles: selectionStylesOptions,
+    autoplay = false
   } = options;
 
   let identifyTarget;
@@ -70,6 +68,40 @@ const Featureinfo = function Featureinfo(options = {}) {
     }
   };
 
+  const getTitle = function getTitle(item) {
+    let featureinfoTitle;
+    let title;
+    let layer;
+    if (item.layer) {
+      if (typeof item.layer === 'string') {
+        // bcuz in getfeatureinfo -> getFeaturesFromRemote only name of the layer is set on the object! (old version before using SelectedItems class)
+        layer = viewer.getLayer(item.layer);
+      } else {
+        layer = viewer.getLayer(item.layer.get('name'));
+      }
+    }
+    // This is very strange: layer above is only a string, could not possibly have method.
+    if (layer) {
+      featureinfoTitle = layer.getProperties().featureinfoTitle;
+    }
+    if (featureinfoTitle) {
+      const featureProps = item.feature.getProperties();
+      title = replacer.replace(featureinfoTitle, featureProps);
+      if (!title) {
+        if (item instanceof SelectedItem) {
+          title = item.getLayer().get('title') ? item.getLayer().get('title') : item.getLayer().get('name');
+        } else {
+          title = item.title ? item.title : item.name;
+        }
+      }
+    } else if (item instanceof SelectedItem) {
+      title = item.getLayer().get('title') ? item.getLayer().get('title') : item.getLayer().get('name');
+    } else {
+      title = item.title ? item.title : item.name;
+    }
+    return title;
+  };
+
   // TODO: direct access to feature and layer should be converted to getFeature and getLayer methods on currentItem
   const callback = function callback(evt) {
     const currentItemIndex = evt.item.index;
@@ -78,43 +110,11 @@ const Featureinfo = function Featureinfo(options = {}) {
       const clone = currentItem.feature.clone();
       clone.setId(currentItem.feature.getId());
       clone.layerName = currentItem.name;
-
       selectionLayer.clearAndAdd(
         clone,
         selectionStyles[currentItem.feature.getGeometry().getType()]
       );
-      let featureinfoTitle;
-      let title;
-      let layer;
-
-      if (currentItem.layer) {
-        if (typeof currentItem.layer === 'string') {
-          // bcuz in getfeatureinfo -> getFeaturesFromRemote only name of the layer is set on the object! (old version before using SelectedItems class)
-          layer = viewer.getLayer(currentItem.layer);
-        } else {
-          layer = viewer.getLayer(currentItem.layer.get('name'));
-        }
-      }
-      // This is very strange: layer above is only a string, could not possibly have method.
-      if (layer) {
-        featureinfoTitle = layer.getProperties().featureinfoTitle;
-      }
-
-      if (featureinfoTitle) {
-        const featureProps = currentItem.feature.getProperties();
-        title = replacer.replace(featureinfoTitle, featureProps);
-        if (!title) {
-          if (currentItem instanceof SelectedItem) {
-            title = currentItem.getLayer().get('title') ? currentItem.getLayer().get('title') : currentItem.getLayer().get('name');
-          } else {
-            title = currentItem.title ? currentItem.title : currentItem.name;
-          }
-        }
-      } else if (currentItem instanceof SelectedItem) {
-        title = currentItem.getLayer().get('title') ? currentItem.getLayer().get('title') : currentItem.getLayer().get('name');
-      } else {
-        title = currentItem.title ? currentItem.title : currentItem.name;
-      }
+      const title = getTitle(currentItem);
       selectionLayer.setSourceLayer(currentItem.layer);
       if (identifyTarget === 'overlay') {
         popup.setTitle(title);
@@ -132,21 +132,37 @@ const Featureinfo = function Featureinfo(options = {}) {
     }
   };
 
-  const initCarousel = function initCarousel(id, opt) {
-    const carouselOptions = opt || {
-      onChanged: callback,
-      items: 1,
-      nav: true,
-      navText: ['<span class="icon"><svg class="o-icon-fa-chevron-left"><use xlink:href="#fa-chevron-left"></use></svg></span>',
-        '<span class="icon"><svg class="o-icon-fa-chevron-right"><use xlink:href="#fa-chevron-right"></use></svg></span>'
-      ]
-    };
-    if (identifyTarget === 'overlay') {
-      const popupHeight = $('.o-popup').outerHeight() + 20;
-      $('#o-popup').height(popupHeight);
+  const initCarousel = function initCarousel(id) {
+    const { length } = Array.from(document.querySelectorAll('.o-identify-content'));
+    if (!document.querySelector('.glide-content') && length > 1) {
+      OGlide({
+        id,
+        callback
+      });
     }
+  };
 
-    return $(id).owlCarousel(carouselOptions);
+  // TODO: should there be anything done?
+  const callbackImage = function callbackImage(evt) {
+    const currentItemIndex = evt.item.index;
+    if (currentItemIndex !== null) {
+      // should there be anything done?
+    }
+  };
+
+  const initImageCarousel = function initImageCarousel(id, oClass, carouselId, targetElement) {
+    const carousel = document.getElementsByClassName(id.substring(1));
+    const { length } = Array.from(carousel[0].querySelectorAll('div.o-image-content > img'));
+    if (!document.querySelector(`.glide-image${carouselId}`) && length > 1) {
+      OGlide({
+        id,
+        callback: callbackImage,
+        oClass,
+        glideClass: `glide-image${carouselId}`,
+        autoplay,
+        targetElement
+      });
+    }
   };
 
   function getSelectionLayer() {
@@ -161,6 +177,10 @@ const Featureinfo = function Featureinfo(options = {}) {
       selection.coordinates = firstFeature.getGeometry().getCoordinates();
       selection.id = firstFeature.getId() != null ? firstFeature.getId() : firstFeature.ol_uid;
       selection.type = typeof selectionLayer.getSourceLayer() === 'string' ? selectionLayer.getFeatureLayer().type : selectionLayer.getSourceLayer().get('type');
+      if (selection.type === 'WFS') {
+        const idSuffix = selection.id.substring(selection.id.lastIndexOf('.') + 1, selection.id.length);
+        selection.id = `${selectionLayer.getSourceLayer().get('name')}.${idSuffix}`;
+      }
       if (selection.type !== 'WFS') {
         const name = typeof selectionLayer.getSourceLayer() === 'string' ? selectionLayer.getSourceLayer() : selectionLayer.getSourceLayer().get('name');
         const id = firstFeature.getId() || selection.id;
@@ -201,7 +221,7 @@ const Featureinfo = function Featureinfo(options = {}) {
         }
       }
       Modal({
-        title: targ.href,
+        title: targ.title,
         content: `<iframe src="${targ.href}" class=""style="width:100%;height:99%"></iframe>`,
         target: viewer.getId(),
         style: modalStyle,
@@ -215,17 +235,19 @@ const Featureinfo = function Featureinfo(options = {}) {
     items = identifyItems;
     clear();
     let content = items.map((i) => i.content).join('');
-    content = '<div id="o-identify"><div id="o-identify-carousel" class="owl-carousel owl-theme"></div></div>';
+    content = '<div id="o-identify"><div id="o-identify-carousel" class="flex"></div></div>';
     switch (target) {
       case 'overlay':
       {
         popup = Popup(`#${viewer.getId()}`);
         popup.setContent({
           content,
-          title: items[0] instanceof SelectedItem ? items[0].getLayer().get('title') : items[0].title
+          title: getTitle(items[0])
         });
         const contentDiv = document.getElementById('o-identify-carousel');
+        const carouselIds = [];
         items.forEach((item) => {
+          carouselIds.push(item.feature.ol_uid);
           if (item.content instanceof Element) {
             contentDiv.appendChild(item.content);
           } else {
@@ -234,19 +256,43 @@ const Featureinfo = function Featureinfo(options = {}) {
         });
         popup.setVisibility(true);
         initCarousel('#o-identify-carousel');
-        const popupHeight = $('.o-popup').outerHeight() + 20;
-        $('#o-popup').height(popupHeight);
+        const firstFeature = items[0].feature;
+        const geometry = firstFeature.getGeometry();
+        const clone = firstFeature.clone();
+        clone.setId(firstFeature.getId());
+        clone.layerName = firstFeature.name;
+        selectionLayer.clearAndAdd(
+          clone,
+          selectionStyles[geometry.getType()]
+        );
+        selectionLayer.setSourceLayer(items[0].layer);
+        const coord = geometry.getType() === 'Point' ? geometry.getCoordinates() : coordinate;
+        carouselIds.forEach((carouselId) => {
+          let targetElement;
+          const elements = document.getElementsByClassName(`o-image-carousel${carouselId}`);
+          elements.forEach(element => {
+            if (!element.closest('.glide__slide--clone')) {
+              targetElement = element;
+            }
+          });
+          const imageCarouselEl = document.getElementsByClassName(`o-image-carousel${carouselId}`);
+          if (imageCarouselEl.length > 0) {
+            initImageCarousel(`#o-image-carousel${carouselId}`, `.o-image-content${carouselId}`, carouselId, targetElement);
+          }
+        });
+        const popupEl = popup.getEl();
+        const popupHeight = document.querySelector('.o-popup').offsetHeight + 10;
+        popupEl.style.height = `${popupHeight}px`;
         overlay = new Overlay({
-          element: popup.getEl(),
-          autoPan: true,
-          autoPanAnimation: {
-            duration: 500
+          element: popupEl,
+          autoPan: {
+            margin: 55,
+            animation: {
+              duration: 500
+            }
           },
-          autoPanMargin: 40,
           positioning: 'bottom-center'
         });
-        const geometry = items[0].feature.getGeometry();
-        const coord = geometry.getType() === 'Point' ? geometry.getCoordinates() : coordinate;
         map.addOverlay(overlay);
         overlay.setPosition(coord);
         break;
@@ -255,7 +301,7 @@ const Featureinfo = function Featureinfo(options = {}) {
       {
         sidebar.setContent({
           content,
-          title: items[0] instanceof SelectedItem ? items[0].getLayer().get('title') : items[0].title
+          title: getTitle(items[0])
         });
         const contentDiv = document.getElementById('o-identify-carousel');
         items.forEach((item) => {
@@ -266,6 +312,16 @@ const Featureinfo = function Featureinfo(options = {}) {
           }
         });
         sidebar.setVisibility(true);
+        const firstFeature = items[0].feature;
+        const geometry = firstFeature.getGeometry();
+        const clone = firstFeature.clone();
+        clone.setId(firstFeature.getId());
+        clone.layerName = firstFeature.name;
+        selectionLayer.clearAndAdd(
+          clone,
+          selectionStyles[geometry.getType()]
+        );
+        selectionLayer.setSourceLayer(items[0].layer);
         initCarousel('#o-identify-carousel');
         break;
       }
@@ -312,7 +368,7 @@ const Featureinfo = function Featureinfo(options = {}) {
         map,
         pixel
       }, viewer)
-        .done((data) => {
+        .then((data) => {
           const serverResult = data || [];
           const result = serverResult.concat(clientResult);
           if (result.length > 0) {
@@ -330,7 +386,8 @@ const Featureinfo = function Featureinfo(options = {}) {
               }
             }, 250);
           }
-        });
+        })
+        .catch((error) => console.error(error));
     }
   };
 
