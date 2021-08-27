@@ -1,5 +1,5 @@
 const path = require('path');
-const merge = require('webpack-merge');
+const { merge } = require('webpack-merge');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const common = require('./webpack.common.js');
 
@@ -16,14 +16,17 @@ module.exports = merge(common, {
     library: 'Origo',
     sourcePrefix: ''
   },
-
-  mode: 'production',
+  mode: 'none',
   plugins: [
-    new CopyWebpackPlugin([
-      { from: path.join(cesiumSource, cesiumWorkers), to: 'dist/thirdparty/cesiumassets/Workers' },
-      { from: path.join(cesiumSource, 'Widgets'), to: 'dist/thirdparty/cesiumassets/Widgets' },
-      { from: path.join(cesiumSource, 'Assets'), to: 'dist/thirdparty/cesiumassets/Assets' },
-      { from: path.join(cesiumSource, 'ThirdParty'), to: 'dist/thirdparty/cesiumassets/ThirdParty' }
-    ])
+    new CopyWebpackPlugin(
+      {
+        patterns: [
+          { from: path.join(cesiumSource, cesiumWorkers), to: 'dist/thirdparty/cesiumassets/Workers' },
+          { from: path.join(cesiumSource, 'Widgets'), to: 'dist/thirdparty/cesiumassets/Widgets' },
+          { from: path.join(cesiumSource, 'Assets'), to: 'dist/thirdparty/cesiumassets/Assets' },
+          { from: path.join(cesiumSource, 'ThirdParty'), to: 'dist/thirdparty/cesiumassets/ThirdParty' }
+        ]
+      }
+    )
   ]
 });

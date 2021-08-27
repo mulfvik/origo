@@ -58,6 +58,21 @@
     },
     {
       "name": "measure"
+    },
+    {
+      "name": "globe",
+      "options": {
+        "resolutionScale": 2,
+        "cesiumIontoken": "",
+        "cesium3dTiles": [
+          {
+            "url": "",
+            "hide3DtilesById": []
+          }
+        ],
+        "cesiumTerrainProvider": "",
+        "cesiumIonassetIdTerrain": ""
+      }
     }
   ],
   "pageSettings": {

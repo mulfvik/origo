@@ -54,9 +54,9 @@ module.exports = {
       'window.jQuery': 'jquery',
       proj4: 'proj4'
     }),
-    new webpack.ProvidePlugin({
-      fetch: 'exports-loader?self.fetch!whatwg-fetch/dist/fetch.umd'
-    }),
+    // new webpack.ProvidePlugin({
+    //   fetch: 'exports-loader?self.fetch!whatwg-fetch/dist/fetch.umd'
+    // }),
     new webpack.DefinePlugin({
       CESIUM_BASE_URL: JSON.stringify('dist/thirdparty/cesiumassets')
     })

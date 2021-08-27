@@ -210,15 +210,15 @@ const Featureinfo = function Featureinfo(options = {}) {
       let modalStyle = '';
       switch (targ.target) {
         case 'modal-full':
-        {
-          modalStyle = 'max-width:unset;width:98%;height:98%;resize:both;overflow:auto;display:flex;flex-flow:column;';
-          break;
-        }
+          {
+            modalStyle = 'max-width:unset;width:98%;height:98%;resize:both;overflow:auto;display:flex;flex-flow:column;';
+            break;
+          }
         default:
-        {
-          modalStyle = 'resize:both;overflow:auto;display:flex;flex-flow:column;';
-          break;
-        }
+          {
+            modalStyle = 'resize:both;overflow:auto;display:flex;flex-flow:column;';
+            break;
+          }
       }
       Modal({
         title: targ.title,
@@ -231,6 +231,7 @@ const Featureinfo = function Featureinfo(options = {}) {
   };
 
   const render = function render(identifyItems, target, coordinate) {
+    let geometry = coordinate;
     const map = viewer.getMap();
     items = identifyItems;
     clear();
@@ -238,106 +239,112 @@ const Featureinfo = function Featureinfo(options = {}) {
     content = '<div id="o-identify"><div id="o-identify-carousel" class="flex"></div></div>';
     switch (target) {
       case 'overlay':
-      {
-        popup = Popup(`#${viewer.getId()}`);
-        popup.setContent({
-          content,
-          title: getTitle(items[0])
-        });
-        const contentDiv = document.getElementById('o-identify-carousel');
-        const carouselIds = [];
-        items.forEach((item) => {
-          carouselIds.push(item.feature.ol_uid);
-          if (item.content instanceof Element) {
-            contentDiv.appendChild(item.content);
-          } else {
-            contentDiv.innerHTML = item.content;
-          }
-        });
-        popup.setVisibility(true);
-        initCarousel('#o-identify-carousel');
-        const firstFeature = items[0].feature;
-        const geometry = firstFeature.getGeometry();
-        const clone = firstFeature.clone();
-        clone.setId(firstFeature.getId());
-        clone.layerName = firstFeature.name;
-        selectionLayer.clearAndAdd(
-          clone,
-          selectionStyles[geometry.getType()]
-        );
-        selectionLayer.setSourceLayer(items[0].layer);
-        const coord = geometry.getType() === 'Point' ? geometry.getCoordinates() : coordinate;
-        carouselIds.forEach((carouselId) => {
-          let targetElement;
-          const elements = document.getElementsByClassName(`o-image-carousel${carouselId}`);
-          elements.forEach(element => {
-            if (!element.closest('.glide__slide--clone')) {
-              targetElement = element;
+        {
+          popup = Popup(`#${viewer.getId()}`);
+          popup.setContent({
+            content,
+            title: getTitle(items[0])
+          });
+          const contentDiv = document.getElementById('o-identify-carousel');
+          const carouselIds = [];
+          items.forEach((item) => {
+            if (item.feature.ol_uid) {
+              carouselIds.push(item.feature.ol_uid);
+            } else {
+              carouselIds.push(item.feature._batchId);
+            }
+            if (item.content instanceof Element) {
+              contentDiv.appendChild(item.content);
+            } else {
+              contentDiv.innerHTML = item.content;
             }
           });
-          const imageCarouselEl = document.getElementsByClassName(`o-image-carousel${carouselId}`);
-          if (imageCarouselEl.length > 0) {
-            initImageCarousel(`#o-image-carousel${carouselId}`, `.o-image-content${carouselId}`, carouselId, targetElement);
+          popup.setVisibility(true);
+          initCarousel('#o-identify-carousel');
+          const firstFeature = items[0].feature;
+          if (items[0].feature.ol_uid) {
+            geometry = firstFeature.getGeometry();
+            const clone = firstFeature.clone();
+            clone.setId(firstFeature.getId());
+            clone.layerName = firstFeature.name;
+            selectionLayer.clearAndAdd(
+              clone,
+              selectionStyles[geometry.getType()]
+            );
+            selectionLayer.setSourceLayer(items[0].layer);
           }
-        });
-        const popupEl = popup.getEl();
-        const popupHeight = document.querySelector('.o-popup').offsetHeight + 10;
-        popupEl.style.height = `${popupHeight}px`;
-        overlay = new Overlay({
-          element: popupEl,
-          autoPan: {
-            margin: 55,
-            animation: {
-              duration: 500
+          const coord = typeof geometry.getType === 'function' && geometry.getType() === 'Point' ? geometry.getCoordinates() : coordinate;
+          carouselIds.forEach((carouselId) => {
+            let targetElement;
+            const elements = document.getElementsByClassName(`o-image-carousel${carouselId}`);
+            elements.forEach(element => {
+              if (!element.closest('.glide__slide--clone')) {
+                targetElement = element;
+              }
+            });
+            const imageCarouselEl = document.getElementsByClassName(`o-image-carousel${carouselId}`);
+            if (imageCarouselEl.length > 0) {
+              initImageCarousel(`#o-image-carousel${carouselId}`, `.o-image-content${carouselId}`, carouselId, targetElement);
             }
-          },
-          positioning: 'bottom-center'
-        });
-        map.addOverlay(overlay);
-        overlay.setPosition(coord);
-        break;
-      }
-      case 'sidebar':
-      {
-        sidebar.setContent({
-          content,
-          title: getTitle(items[0])
-        });
-        const contentDiv = document.getElementById('o-identify-carousel');
-        items.forEach((item) => {
-          if (item.content instanceof Element) {
-            contentDiv.appendChild(item.content);
-          } else {
-            contentDiv.innerHTML = item.content;
-          }
-        });
-        sidebar.setVisibility(true);
-        const firstFeature = items[0].feature;
-        const geometry = firstFeature.getGeometry();
-        const clone = firstFeature.clone();
-        clone.setId(firstFeature.getId());
-        clone.layerName = firstFeature.name;
-        selectionLayer.clearAndAdd(
-          clone,
-          selectionStyles[geometry.getType()]
-        );
-        selectionLayer.setSourceLayer(items[0].layer);
-        initCarousel('#o-identify-carousel');
-        break;
-      }
-      case 'infowindow':
-      {
-        if (items.length === 1) {
-          selectionManager.addOrHighlightItem(items[0]);
-        } else if (items.length > 1) {
-          selectionManager.addItems(items);
+          });
+          const popupEl = popup.getEl();
+          const popupHeight = document.querySelector('.o-popup').offsetHeight + 10;
+          popupEl.style.height = `${popupHeight}px`;
+          overlay = new Overlay({
+            element: popupEl,
+            autoPan: {
+              margin: 55,
+              animation: {
+                duration: 500
+              }
+            },
+            positioning: 'bottom-center'
+          });
+          map.addOverlay(overlay);
+          overlay.setPosition(coord);
+          break;
         }
-        break;
-      }
+      case 'sidebar':
+        {
+          sidebar.setContent({
+            content,
+            title: getTitle(items[0])
+          });
+          const contentDiv = document.getElementById('o-identify-carousel');
+          items.forEach((item) => {
+            if (item.content instanceof Element) {
+              contentDiv.appendChild(item.content);
+            } else {
+              contentDiv.innerHTML = item.content;
+            }
+          });
+          sidebar.setVisibility(true);
+          const firstFeature = items[0].feature;
+          const geometry = firstFeature.getGeometry();
+          const clone = firstFeature.clone();
+          clone.setId(firstFeature.getId());
+          clone.layerName = firstFeature.name;
+          selectionLayer.clearAndAdd(
+            clone,
+            selectionStyles[geometry.getType()]
+          );
+          selectionLayer.setSourceLayer(items[0].layer);
+          initCarousel('#o-identify-carousel');
+          break;
+        }
+      case 'infowindow':
+        {
+          if (items.length === 1) {
+            selectionManager.addOrHighlightItem(items[0]);
+          } else if (items.length > 1) {
+            selectionManager.addItems(items);
+          }
+          break;
+        }
       default:
-      {
-        break;
-      }
+        {
+          break;
+        }
     }
 
     const modalLinks = document.getElementsByClassName('o-identify-link-modal');
