@@ -3,8 +3,8 @@
 /* eslint-disable no-underscore-dangle */
 import OLCesium from 'olcs/OLCesium';
 import * as Cesium from 'cesium';
-import { Component, Button, dom } from '../../ui';
 import proj4 from 'proj4';
+import { Component, Button, dom } from '../../ui';
 import getAttributes from '../../getattributes';
 
 const Globe = function Globe(options = {}) {
@@ -16,7 +16,7 @@ const Globe = function Globe(options = {}) {
   } = options;
 
   const {
-    resolutionScale = 1,
+    resolutionScale = window.devicePixelRatio,
     cesium3dTiles,
     cesiumTerrainProvider,
     cesiumIontoken,
@@ -27,8 +27,6 @@ const Globe = function Globe(options = {}) {
   let viewer;
   let ol3d;
   let ol3dTarget;
-  let cesiumScene;
-  let cesiumCanvas;
   let globeButton;
   let tileset;
   let terrain;
@@ -37,14 +35,6 @@ const Globe = function Globe(options = {}) {
   // Toggles between 2D and 3D
   const toggleGlobe = () => {
     ol3d.setEnabled(!ol3d.getEnabled());
-  };
-
-  // Find away to check if globe is active from this component.
-  const isActive = () => {
-    if (ol3d.getEnabled()) {
-      console.log('Globe active');
-    }
-    console.log('Globe not active');
   };
 
   // To use Cesium Ion features token needs to be provided in config option token
@@ -130,7 +120,7 @@ const Globe = function Globe(options = {}) {
     const handler = new Cesium.ScreenSpaceEventHandler(cesiumScene.canvas);
 
     if (Cesium.PostProcessStageLibrary.isSilhouetteSupported(cesiumScene)) {
-      let silhouetteBlue = Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
+      const silhouetteBlue = Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
       silhouetteBlue.uniforms.color = Cesium.Color.ROYALBLUE;
       silhouetteBlue.uniforms.length = 0.01;
       silhouetteBlue.selected = [];
@@ -140,7 +130,7 @@ const Globe = function Globe(options = {}) {
           silhouetteBlue
         ])
       );
-      handler.setInputAction(function onLeftClick(movement) {
+      handler.setInputAction((movement) => {
         silhouetteBlue.selected = [];
         const pickedFeature = cesiumScene.pick(movement.position);
         if (silhouetteBlue.selected[0] === pickedFeature) {
@@ -148,7 +138,7 @@ const Globe = function Globe(options = {}) {
         }
         silhouetteBlue.selected = [pickedFeature];
       },
-        Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      Cesium.ScreenSpaceEventType.LEFT_CLICK);
     } else {
       console.warn('Silhouette for 3d objects is not supported');
     }
@@ -156,7 +146,7 @@ const Globe = function Globe(options = {}) {
 
   const get3DFeatureInfo = (cesiumScene) => {
     const handler = new Cesium.ScreenSpaceEventHandler(cesiumScene.canvas);
-    let obj = {};
+    const obj = {};
     let title;
 
     handler.setInputAction((click) => {
@@ -174,7 +164,7 @@ const Globe = function Globe(options = {}) {
           Number(cartographic.latitude)
         );
         const alt = cartographic.height;
-        // TODO Get the projection from map/layer config instead if map is on 4326
+        // TODO Get the projection from map/layer config instead if map is on 4326 viewer.projectionCode
         const epsg3857 = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
 
         const propertyNames = feature.getPropertyNames();
@@ -183,14 +173,17 @@ const Globe = function Globe(options = {}) {
         for (const propertyName in propertyNames) {
           const propName = propertyNames[propertyName];
           const props = feature.getProperty(propName);
-          title = feature.getProperty("elementId");
+          title = feature.getProperty('name');
+          if (title === undefined) {
+            title = `Byggnadsid: ${feature.getProperty('elementId')}`;
+          }
           if (props != undefined) {
             const content = `<ul><li><b>${propName}:</b> ${feature.getProperty(propName)}</li>`;
             contentItems.push(content);
           }
         }
-        obj.title = `Byggnadsid: ${title}`;
-        obj.content = contentItems.join(' ') + '</ul>';
+        obj.title = `${title}`;
+        obj.content = `${contentItems.join(' ')}</ul>`;
         obj.feature = feature;
 
         featureInfo.render([obj], 'overlay', epsg3857, epsg3857);
@@ -224,7 +217,7 @@ const Globe = function Globe(options = {}) {
       map = viewer.getMap();
       featureInfo = viewer.getControlByName('featureInfo');
       ol3d = new OLCesium({ map, target: ol3dTarget });
-      cesiumScene = ol3d.getCesiumScene();
+      const cesiumScene = ol3d.getCesiumScene();
       ol3d.setResolutionScale(resolutionScale);
       noCameraBelowTerrain(cesiumScene);
       terrainProviders(cesiumScene);

@@ -16,9 +16,6 @@
       "name": "sharemap"
     },
     {
-      "name": "globe"
-    },
-    {
       "name": "geoposition"
     },
     {
@@ -43,7 +40,7 @@
       "name": "legend",
       "options": {
         "labelOpacitySlider": "Opacity",
-        "useGroupIndication" : true
+        "useGroupIndication": true
       }
     },
     {
@@ -62,7 +59,7 @@
     {
       "name": "globe",
       "options": {
-        "resolutionScale": 2,
+        "resolutionScale": 1,
         "cesiumIontoken": "",
         "cesium3dTiles": [
           {
