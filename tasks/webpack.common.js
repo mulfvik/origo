@@ -1,4 +1,7 @@
 const webpack = require('webpack');
+const path = require('path');
+
+const cesiumSource = 'node_modules/cesium/Source';
 
 module.exports = {
   entry: [
@@ -10,11 +13,11 @@ module.exports = {
   module: {
     unknownContextCritical: false,
     rules: [
-      {
-        test: /\.m?js$/,
-        enforce: 'pre',
-        use: ['source-map-loader']
-      },
+      // {
+      //   test: /\.m?js$/,
+      //   enforce: 'pre',
+      //   use: ['source-map-loader']
+      // },
       {
         test: /\.(js)$/,
         exclude: {
@@ -35,6 +38,19 @@ module.exports = {
       {
         test: /\.(png|gif|jpg|jpeg|svg|xml|json)$/,
         use: ['url-loader']
+      },
+      {
+        test: /\.js$/,
+        enforce: 'pre',
+        include: path.resolve(__dirname, cesiumSource),
+        use: [{
+          loader: 'strip-pragma-loader',
+          options: {
+            pragmas: {
+              debug: false
+            }
+          }
+        }]
       }
     ]
   },
@@ -46,6 +62,9 @@ module.exports = {
   },
   resolve: {
     extensions: ['*', '.js']
+    // alias: {
+    //   cesium: path.resolve(__dirname, cesiumSource)
+    // }
   },
   plugins: [
     new webpack.ProvidePlugin({
@@ -60,5 +79,11 @@ module.exports = {
     new webpack.DefinePlugin({
       CESIUM_BASE_URL: JSON.stringify('dist/thirdparty/cesiumassets')
     })
+    // new webpack.optimize.CommonsChunkPlugin({
+    //   name: 'cesium',
+    //   minChunks(module) {
+    //     return module.context && module.context.indexOf('cesium') !== -1;
+    //   }
+    // })
   ]
 };

@@ -1,5 +1,5 @@
 const { merge } = require('webpack-merge');
-const common = require('./webpack.lint.common.js');
+const common = require('./webpack.lint.common');
 
 module.exports = merge(common, {
   output: {

@@ -1,7 +1,7 @@
 const path = require('path');
 const { merge } = require('webpack-merge');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const common = require('./webpack.common.js');
+const common = require('./webpack.common');
 
 const cesiumSource = 'node_modules/cesium/Source';
 const cesiumWorkers = '../Build/Cesium/Workers';
