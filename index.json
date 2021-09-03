@@ -59,11 +59,18 @@
     {
       "name": "globe",
       "options": {
-        "resolutionScale": 1,
+        "resolutionScale": 1.5,
+        "settings": {
+          "enableAtmosphere": false,
+          "enableGroundAtmosphere": false,
+          "enableFog": false,
+          "enableLighting": false
+        },
         "cesiumIontoken": "",
         "cesium3dTiles": [
           {
             "url": "",
+            "outline": false,
             "hide3DtilesById": []
           }
         ],
