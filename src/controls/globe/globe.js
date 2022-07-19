@@ -1,3 +1,6 @@
+/* eslint-disable no-template-curly-in-string */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-underscore-dangle */
 import * as Cesium from 'cesium';
 import OLCesium from 'olcs/OLCesium';
 import proj4 from 'proj4';
@@ -8,8 +11,17 @@ import getAttributes from '../../getattributes';
 window.Cesium = Cesium;
 
 const Globe = function Globe(options = {}) {
+  let map;
+  let viewer;
+  let oGlobe;
+  let globeButton;
+  let tileset;
+  let terrain;
+  let featureInfo;
   let {
-    target
+    target,
+    globeOnStart,
+    showGlobe = true
   } = options;
 
   const {
@@ -21,24 +33,31 @@ const Globe = function Globe(options = {}) {
     cesiumIonassetIdTerrain
   } = options;
 
-  let map;
-  let viewer;
-  let ol3d;
-  let globeButton;
-  let tileset;
-  let terrain;
-  let featureInfo;
 
   // Toggles between 2D and 3D
   const toggleGlobe = () => {
-    // Check if map projection is EPSG:4326 or EPSG:3857 and if map has other projection,
-    // don't activate globe and console error
+    // Check if map projection is EPSG:4326 or EPSG:3857. 
+    // If map has other projection, don't activate globe and console error
     if (viewer.getProjectionCode() === 'EPSG:4326' || viewer.getProjectionCode() === 'EPSG:3857') {
-      ol3d.setEnabled(!ol3d.getEnabled());
+      oGlobe.setEnabled(!oGlobe.getEnabled());
     } else {
       console.error('Map projection must be EPSG:4326 or EPSG:3857 to be able to use globe mode.');
     }
   };
+
+  // Init map with globe or not
+  const activeGlobeOnStart = () => {
+    const activeOnStart = globeOnStart ? toggleGlobe() : oGlobe.setEnabled(false);
+    return activeOnStart;
+  };
+
+  // Renders the globe or not, only effects the terrain and raster overlays on it
+  const showGlobeOption = (scene) => {
+    if (!showGlobe) {
+      scene.globe.show = false;
+    }
+  };
+
 
   // To use Cesium Ion features token needs to be provided in config option token
   Cesium.Ion.defaultAccessToken = cesiumIontoken;
@@ -47,17 +66,6 @@ const Globe = function Globe(options = {}) {
   // Put the cesium credits in origo credits container in origo style
   const cesiumCredits = () => {
     document.getElementsByClassName('cesium-credit-logoContainer')[0].parentNode.style.display = 'none';
-  };
-
-  // TODO Handle this when user wants to render tiles below terrain
-  // Suspend the camera to go below terrain, that is when the terrain is rendered
-  const noCameraBelowTerrain = (scene) => {
-    scene.camera.changed.addEventListener(() => {
-      if (scene.camera._suspendTerrainAdjustment && scene.mode === Cesium.SceneMode.SCENE3D) {
-        scene.camera._suspendTerrainAdjustment = false;
-        scene.camera._adjustHeightForTerrain();
-      }
-    });
   };
 
   // Terrain
@@ -99,14 +107,15 @@ const Globe = function Globe(options = {}) {
   };
 
   // 3D tiles
-  const cesium3DtilesProviders = (scene, ol3dTarget) => {
+  const cesium3DtilesProviders = (scene) => {
     if (cesium3dTiles) {
       cesium3dTiles.forEach((tilesAsset) => {
         const url = tilesAsset.url;
         if (typeof url === 'number' && cesiumIontoken) {
           tileset = new Cesium.Cesium3DTileset({
             url: Cesium.IonResource.fromAssetId(url),
-            debugShowContentBoundingVolume: true,
+            shadows: true,
+            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError || 2,
             showOutline: tilesAsset.outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
@@ -116,7 +125,8 @@ const Globe = function Globe(options = {}) {
         } else {
           tileset = new Cesium.Cesium3DTileset({
             url,
-            debugShowContentBoundingVolume: true,
+            shadows: true,
+            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError || 2,
             showOutline: tilesAsset.outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
@@ -172,6 +182,7 @@ const Globe = function Globe(options = {}) {
         const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
         const lon = Cesium.Math.toDegrees(Number(cartographic.longitude));
         const lat = Cesium.Math.toDegrees(Number(cartographic.latitude));
+        // Use alt if in need of height reference
         const alt = cartographic.height;
         if (viewer.getProjectionCode() === 'EPSG:3857') {
           coordinate = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
@@ -213,36 +224,55 @@ const Globe = function Globe(options = {}) {
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   };
-  const globeSettings = (scene) => {
+
+  const sceneSettings = (scene) => {
     settings.enableAtmosphere = settings.enableAtmosphere ? scene.skyAtmosphere.show = true : scene.skyAtmosphere.show = false;
-    settings.enableGroundAtmosphere = settings.enableGroundAtmosphere ? scene.globe.showGroundAtmosphere = true : scene.globe.showGroundAtmosphere = false;
     settings.enableFog = settings.enableFog ? scene.fog.enabled = true : scene.fog.enabled = false;
-    settings.enableLighting = settings.enableLighting ? scene.globe.enableLighting = true : scene.globe.enableLighting = false;
+    settings.enableShadows = settings.enableShadows ? scene.shadows = true : scene.shadows = false;
+  };
+  
+  const globeSettings = (scene) => {
+    const globe = scene.globe;
+    settings.depthTestAgainstTerrain = settings.depthTestAgainstTerrain ? globe.depthTestAgainstTerrain = true : globe.depthTestAgainstTerrain = false;
+    settings.enableGroundAtmosphere = settings.enableGroundAtmosphere ? globe.showGroundAtmosphere = true : globe.showGroundAtmosphere = false;
+    settings.enableLighting = settings.enableLighting ? globe.enableLighting = true : globe.enableLighting = false;
+    if (settings.skyBox) {
+      const url = settings.skyBox.url;
+      scene.skyBox = new Cesium.SkyBox({
+        sources: {
+          positiveX: `${url}${settings.skyBox.images.pX}`,
+          negativeX: `${url}${settings.skyBox.images.nX}`,
+          positiveY: `${url}${settings.skyBox.images.pY}`,
+          negativeY: `${url}${settings.skyBox.images.nY}`,
+          positiveZ: `${url}${settings.skyBox.images.pZ}`,
+          negativeZ: `${url}${settings.skyBox.images.nZ}`
+        }
+      });
+    }
+    settings.skyBox = false;
   };
 
-  const get3DtilesIdHelper = () => {
-    // TODO Draw polygon and get objects [id] for hideObjects function
-  };
   return Component({
     name: 'globe',
     onAdd(evt) {
       viewer = evt.target;
-      const ol3dTarget = viewer.getId();
+      const oGlobeTarget = viewer.getId();
       map = viewer.getMap();
       featureInfo = viewer.getControlByName('featureInfo');
-      ol3d = new OLCesium({ map, target: ol3dTarget });
-      const cesiumScene = ol3d.getCesiumScene();
-      ol3d.setResolutionScale(resolutionScale);
-      noCameraBelowTerrain(cesiumScene);
+      oGlobe = new OLCesium({ map, target: oGlobeTarget });
+      window.oGlobe = oGlobe;
+      activeGlobeOnStart();
+      const cesiumScene = oGlobe.getCesiumScene();
+      oGlobe.setResolutionScale(resolutionScale);
       terrainProviders(cesiumScene);
-      cesium3DtilesProviders(cesiumScene, ol3dTarget);
+      cesium3DtilesProviders(cesiumScene, oGlobeTarget);
       get3DFeatureInfo(cesiumScene);
       pickedFeatureStyle(cesiumScene);
-      cesiumCredits();
+      showGlobeOption(cesiumScene);
       globeSettings(cesiumScene);
-      // // Init Cesium viewer
-      // const cesiumViewerOptions = {};
-      // const cesiumViewer = new Cesium.Viewer(ol3dTarget, cesiumViewerOptions);
+      sceneSettings(cesiumScene);
+      cesiumCredits();
+
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       this.on('render', this.onRender);
       this.addComponents([globeButton]);

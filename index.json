@@ -59,17 +59,38 @@
     {
       "name": "globe",
       "options": {
-        "resolutionScale": 1.5,
+        "globeOnStart": true,
+        "showGlobe": true,
         "settings": {
-          "enableAtmosphere": false,
-          "enableGroundAtmosphere": false,
-          "enableFog": false,
-          "enableLighting": false
+          "depthTestAgainstTerrain": false,
+          "enableAtmosphere": true,
+          "enableGroundAtmosphere": true,
+          "enableFog": true,
+          "enableLighting": true,
+          "enableShadows": true,
+          "skyBox": {
+            "url": "http://localhost:9966/dist/thirdparty/cesiumassets/Assets/Textures/SkyBox/",
+            "images": {
+              "pX": "tycho2t3_80_px.jpg",
+              "nX": "tycho2t3_80_mx.jpg",
+              "pY": "tycho2t3_80_py.jpg",
+              "nY": "tycho2t3_80_my.jpg",
+              "pZ": "tycho2t3_80_pz.jpg",
+              "nZ": "tycho2t3_80_mz.jpg"
+            }
+          }
         },
         "cesiumIontoken": "",
         "cesium3dTiles": [
           {
             "url": "",
+            "maximumScreenSpaceError": 2,
+            "outline": true,
+            "hide3DtilesById": []
+          },
+          {
+            "url": "",
+            "maximumScreenSpaceError": 5,
             "outline": false,
             "hide3DtilesById": []
           }
