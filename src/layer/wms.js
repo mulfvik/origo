@@ -31,9 +31,24 @@ function createImageSource(options) {
     params: {
       LAYERS: options.id,
       VERSION: options.version,
-      FORMAT: options.format
+      FORMAT: options.format,
+      STYLES: options.style
     }
   }));
+}
+
+function createDefaultStyle(wmsOptions, source, viewer) {
+  const maxResolution = viewer.getResolutions()[viewer.getResolutions().length - 1];
+  const styleName = `${wmsOptions.name}_WMSDefault`;
+  const getLegendString = source.getLegendUrl(maxResolution, wmsOptions.legendParams);
+  const style = [[{
+    icon: {
+      src: `${getLegendString}`
+    },
+    extendedLegend: wmsOptions.hasThemeLegend || false
+  }]];
+  viewer.addStyle(styleName, style);
+  return styleName;
 }
 
 const wms = function wms(layerOptions, viewer) {
@@ -53,7 +68,6 @@ const wms = function wms(layerOptions, viewer) {
   sourceOptions.projection = viewer.getProjection();
   sourceOptions.id = wmsOptions.id;
   sourceOptions.format = wmsOptions.format ? wmsOptions.format : sourceOptions.format;
-
   const styleSettings = viewer.getStyle(wmsOptions.styleName);
   const wmsStyleObject = styleSettings ? styleSettings[0].find(s => s.wmsStyle) : undefined;
   sourceOptions.style = wmsStyleObject ? wmsStyleObject.wmsStyle : '';
@@ -66,14 +80,27 @@ const wms = function wms(layerOptions, viewer) {
     sourceOptions.tileGrid = viewer.getTileGrid();
 
     if (wmsOptions.extent) {
+      // FIXME: there is no "extent" property to set. Code has no effect. Probably must create a new grid from viewer.getTileGridSettings .
       sourceOptions.tileGrid.extent = wmsOptions.extent;
     }
   }
 
   if (renderMode === 'image') {
-    return image(wmsOptions, createImageSource(sourceOptions));
+    const source = createImageSource(sourceOptions);
+    if (wmsOptions.styleName === 'default') {
+      wmsOptions.styleName = createDefaultStyle(wmsOptions, source, viewer);
+      wmsOptions.style = wmsOptions.styleName;
+    }
+    return image(wmsOptions, source);
   }
-  return tile(wmsOptions, createTileSource(sourceOptions));
+
+  const source = createTileSource(sourceOptions);
+
+  if (wmsOptions.styleName === 'default') {
+    wmsOptions.styleName = createDefaultStyle(wmsOptions, source, viewer);
+    wmsOptions.style = wmsOptions.styleName;
+  }
+  return tile(wmsOptions, source);
 };
 
 export default wms;

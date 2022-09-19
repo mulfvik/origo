@@ -16,9 +16,11 @@ module.exports = merge(common, {
   output: {
     path: `${__dirname}/../dist`,
     filename: 'origo.min.js',
-    libraryTarget: 'var',
-    libraryExport: 'default',
-    library: 'Origo'
+    library: {
+      type: 'var',
+      export: 'default',
+      name: 'Origo'
+    }
   },
   devtool: false,
   mode: 'production'

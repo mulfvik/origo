@@ -1,4 +1,7 @@
 import EsriJSON from 'ol/format/EsriJSON';
+import BaseTileLayer from 'ol/layer/BaseTile';
+import ImageLayer from 'ol/layer/Image';
+import LayerGroup from 'ol/layer/Group';
 import maputils from './maputils';
 import SelectedItem from './models/SelectedItem';
 
@@ -25,6 +28,29 @@ function createSelectedItem(feature, layer, map, groupLayers) {
     selectionGroupTitle = layer.get('title');
   }
 
+  // Add pseudo attributes to make sure they exist when the SelectedItem is created as the content is created in constructor
+  // Ideally we would also populate here, but that is an async operation and will break the api.
+  const attachments = layer.get('attachments');
+  if (attachments) {
+    attachments.groups.forEach(a => {
+      if (a.linkAttribute) {
+        feature.set(a.linkAttribute, '');
+      }
+      if (a.fileNameAttribute) {
+        feature.set(a.fileNameAttribute, '');
+      }
+    });
+  }
+  const relatedLayers = layer.get('relatedLayers');
+  if (relatedLayers) {
+    relatedLayers.forEach(currLayer => {
+      if (currLayer.promoteAttribs) {
+        currLayer.promoteAttribs.forEach(currAttrib => {
+          feature.set(currAttrib.parentName, '');
+        });
+      }
+    });
+  }
   return new SelectedItem(feature, layer, map, selectionGroup, selectionGroupTitle);
 }
 
@@ -33,6 +59,34 @@ function getFeatureInfoUrl({
   resolution,
   projection
 }, layer) {
+  if (layer.get('infoFormat') === 'application/geo+json' || layer.get('infoFormat') === 'application/geojson') {
+    const url = layer.getSource().getFeatureInfoUrl(coordinate, resolution, projection, {
+      INFO_FORMAT: layer.get('infoFormat'),
+      FEATURE_COUNT: '20'
+    });
+
+    return fetch(url, { type: 'GET' })
+      .then((res) => {
+        if (res.error) {
+          return [];
+        }
+        return res.json();
+      })
+      .then(json => {
+        if (json.features.length > 0) {
+          const copyJson = json;
+          copyJson.features.forEach((item, i) => {
+            if (!item.geometry) {
+              copyJson.features[i].geometry = { type: 'Point', coordinates: coordinate };
+            }
+          });
+          const feature = maputils.geojsonToFeature(copyJson);
+          return feature;
+        }
+        return [];
+      })
+      .catch(error => console.error(error));
+  }
   const url = layer.getSource().getFeatureInfoUrl(coordinate, resolution, projection, {
     INFO_FORMAT: 'application/json',
     FEATURE_COUNT: '20'
@@ -84,31 +138,6 @@ function getAGSIdentifyUrl({ layer, coordinate }, viewer) {
   }).catch(error => console.error(error));
 }
 
-function isTainted({
-  pixel,
-  layerFilter,
-  map
-}) {
-  try {
-    if (layerFilter) {
-      map.forEachLayerAtPixel(pixel, (layer) => layerFilter === layer);
-    }
-
-    return false;
-  } catch (e) {
-    console.error(e);
-    return true;
-  }
-}
-
-function layerAtPixel({
-  pixel,
-  matchLayer,
-  map
-}) {
-  map.forEachLayerAtPixel(pixel, (layer) => matchLayer === layer);
-}
-
 function getGetFeatureInfoRequest({ layer, coordinate }, viewer) {
   const layerType = layer.get('type');
   const obj = {};
@@ -121,14 +150,14 @@ function getGetFeatureInfoRequest({ layer, coordinate }, viewer) {
       if (layer.get('featureinfoLayer')) {
         const featureinfoLayerName = layer.get('featureinfoLayer');
         const featureinfoLayer = viewer.getLayer(featureinfoLayerName);
-        return getGetFeatureInfoRequest({ featureinfoLayer, coordinate }, viewer);
+        return getGetFeatureInfoRequest({ layer: featureinfoLayer, coordinate }, viewer);
       }
       break;
     case 'WMS':
       if (layer.get('featureinfoLayer')) {
         const featureinfoLayerName = layer.get('featureinfoLayer');
         const featureinfoLayer = viewer.getLayer(featureinfoLayerName);
-        return getGetFeatureInfoRequest({ featureinfoLayer, coordinate }, viewer);
+        return getGetFeatureInfoRequest({ layer: featureinfoLayer, coordinate }, viewer);
       }
       obj.cb = 'GEOJSON';
       obj.fn = getFeatureInfoUrl({ coordinate, resolution, projection }, layer);
@@ -137,7 +166,7 @@ function getGetFeatureInfoRequest({ layer, coordinate }, viewer) {
       if (layer.get('featureinfoLayer')) {
         const featureinfoLayerName = layer.get('featureinfoLayer');
         const featureinfoLayer = viewer.getLayer(featureinfoLayerName);
-        return getGetFeatureInfoRequest({ featureinfoLayer, coordinate }, viewer);
+        return getGetFeatureInfoRequest({ layer: featureinfoLayer, coordinate }, viewer);
       }
       obj.fn = getAGSIdentifyUrl({ layer, coordinate }, viewer);
       return obj;
@@ -150,48 +179,23 @@ function getGetFeatureInfoRequest({ layer, coordinate }, viewer) {
 
 function getFeatureInfoRequests({
   coordinate,
-  layers,
-  map,
   pixel
 }, viewer) {
   const requests = [];
-  // Check for support of crossOrigin in image, absent in IE 8 and 9
-  if ('crossOrigin' in new (Image)()) {
-    map.forEachLayerAtPixel(pixel, (layer) => {
-      if (layer.get('queryable')) {
-        const item = getGetFeatureInfoRequest({ layer, coordinate }, viewer);
-        if (item) {
-          requests.push(item);
-        }
+  const layerArray = [];
+  const layerGroups = viewer.getQueryableLayers().filter(layer => layer instanceof LayerGroup);
+  if (layerGroups) { layerGroups.forEach(item => item.getLayersArray().forEach(element => layerArray.push(element))); }
+  const layers = viewer.getQueryableLayers().filter(layer => layer instanceof BaseTileLayer || layer instanceof ImageLayer);
+  if (layers) { layers.forEach(element => layerArray.push(element)); }
+  layerArray.forEach(layer => {
+    const pixelVal = layer.getData(pixel);
+    if (pixelVal instanceof Uint8ClampedArray && pixelVal[3] > 0) {
+      const item = getGetFeatureInfoRequest({ layer, coordinate }, viewer);
+      if (item) {
+        requests.push(item);
       }
-    });
-  } else if (isTainted({ map, pixel })) { // If canvas is tainted
-    layers.forEach((layer) => {
-      if (layer.get('queryable')) {
-        // If layer is tainted, then create request for layer
-        if (isTainted({ pixel, layer, map })) {
-          const item = getGetFeatureInfoRequest({ layer, coordinate }, viewer);
-          if (item) {
-            requests.push(item);
-          }
-        } else if (layerAtPixel({ pixel, layer, map })) { // If layer is not tainted, test if layer hit at pixel
-          const item = getGetFeatureInfoRequest({ layer, coordinate }, viewer);
-          if (item) {
-            requests.push(item);
-          }
-        }
-      }
-    });
-  } else { // If crossOrigin is not supported and canvas not tainted
-    map.forEachLayerAtPixel(pixel, (layer) => {
-      if (layer.get('queryable') === true) {
-        const item = getGetFeatureInfoRequest({ layer, coordinate }, viewer);
-        if (item) {
-          requests.push(item);
-        }
-      }
-    });
-  }
+    }
+  });
   return requests;
 }
 
@@ -268,6 +272,7 @@ function getFeaturesAtPixel({
 }
 
 export default {
+  createSelectedItem,
   getFeaturesFromRemote,
   getFeaturesAtPixel
 };

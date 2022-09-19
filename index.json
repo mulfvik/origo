@@ -60,7 +60,7 @@
       "name": "globe",
       "options": {
         "showGlobe": true,
-        "globeOnStart": false,
+        "globeOnStart": true,
         "settings": {
           "depthTestAgainstTerrain": false,
           "enableAtmosphere": true,
@@ -80,16 +80,11 @@
             }
           }
         },
-        "cesiumIontoken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhY2E0YmM1Mi1kMzY1LTQ5OWUtOWUxNS05MzJkY2ExN2FiMTEiLCJpZCI6NDAxMDgsImlhdCI6MTY1MTc1NDg4MX0.rpYAxY3twCcx3VW-UPb2LjOVKjHxIetB_We6R2oAOB4",
+        "cesiumIontoken": "",
         "cesium3dTiles": [
-		  {
-            "url": "https://karta.haninge.se/models/showcase/Aby_1_39_4326/tileset.json",
-            "maximumScreenSpaceError": 16,
-            "outline": true
-          },
           {
             "url": "OSM-Buildings",
-            "maximumScreenSpaceError": 16,
+            "maximumScreenSpaceError": 2,
             "outline": true,
             "shadows": true,
             "filter": "${feature['elementId']} !== 251329024 && ${feature['elementId']} !== 425027205 && ${feature['elementId']} !== 425002757",
@@ -130,7 +125,7 @@
           }
         ],
         "cesiumTerrainProvider": "",
-        "cesiumIonassetIdTerrain": 1
+        "cesiumIonassetIdTerrain": ""
       }
     }
   ],
@@ -141,7 +136,7 @@
       "text": "Origo"
     },
     "mapGrid": {
-      "visible": false
+      "visible": true
     }
   },
   "projectionCode": "EPSG:3857",
@@ -158,9 +153,10 @@
     20037508.34
   ],
   "center": [
-    2015034, 8208059
+    1770000,
+    8770000
   ],
-  "zoom": 17,
+  "zoom": 7,
   "resolutions": [
     156543.03390625,
     78271.516953125,
@@ -198,16 +194,8 @@
     "infowindow": "overlay"
   },
   "source": {
-    "geowebcache": {
-      "url": "https://geodata.haninge.se/geowebcache/service/wmts"
-    },
-    "states": {
-      "url": "https://ahocevar.com/geoserver/wms",
-      "version": "1.3.0"
-    },
-    "qgis_karta_mex": {
-      "url": "https://karta.haninge.se/mex/ows/Mex",
-      "workspace": "qgs"
+    "local": {
+      "url": "http://localhost/geoserver/wms"
     }
   },
   "groups": [
@@ -215,21 +203,16 @@
       "name": "background",
       "title": "Bakgrundskartor",
       "expanded": true
-    },
-    {
-      "name": "wms",
-      "title": "Lager",
-      "expanded": true
     }
   ],
   "layers": [
     {
       "name": "origo-cities",
       "title": "Origokommuner",
+      "group": "root",
       "source": "data/origo-cities-3857.geojson",
       "style": "origo-logo",
       "type": "GEOJSON",
-      "group": "root",
       "attributes": [
         {
           "name": "name"
@@ -238,52 +221,13 @@
       "visible": true
     },
     {
-      "name": "fastighetsgranser_orto_3857",
-      "source": "geowebcache",
-      "title": "Lantmäteriets fastighetsgränser",
-      "group": "root",
-      "queryable": true,
-      "style": "orto",
-      "type": "WMTS",
-      "visible": false,
-      "attribution": "&copy Lantmäteriet Geodatasamverkan",
-      "format": "image/png"
-    },
-    {
-      "name": "topowebbkartan_3857",
-      "source": "geowebcache",
-      "title": "Lantmäteriets topowebbkarta",
+      "name": "osm",
+      "title": "OpenStreetMap",
       "group": "background",
       "queryable": false,
-      "style": "karta_farg",
-      "type": "WMTS",
-      "visible": true,
-      "attribution": "&copy Lantmäteriet Geodatasamverkan",
-      "format": "image/png"
-    },
-    {
-      "name": "topowebbkartan_nedtonad_3857",
-      "source": "geowebcache",
-      "title": "Lantmäteriets topowebbkarta nedtonad",
-      "group": "background",
-      "queryable": false,
-      "style": "karta_gra",
-      "type": "WMTS",
-      "visible": false,
-      "attribution": "&copy Lantmäteriet Geodatasamverkan",
-      "format": "image/png"
-    },
-    {
-      "name": "Ortofoto_0.16_3857",
-      "source": "geowebcache",
-      "title": "Lantmäteriets senaste flygfoto (2019)",
-      "group": "background",
-      "queryable": false,
-      "style": "orto",
-      "type": "WMTS",
-      "visible": false,
-      "attribution": "&copy Lantmäteriet Geodatasamverkan",
-      "format": "image/png"
+      "style": "karta_osm",
+      "type": "OSM",
+      "visible": true
     }
   ],
   "styles": {
@@ -342,19 +286,6 @@
             }
           }
         }
-      ]
-    ],
-    "fk_ay": [
-      [
-        {
-            "stroke": {
-              "color": "rgba(0,0,0,1)",
-              "width": 2
-            },
-            "fill": {
-              "color": "rgba(0,0,0,0)"
-            }
-          }
       ]
     ],
     "karta_osm": [

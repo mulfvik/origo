@@ -5,14 +5,18 @@ module.exports = merge(common, {
   output: {
     publicPath: '/js',
     filename: 'origo.js',
-    libraryTarget: 'var',
-    libraryExport: 'default',
-    library: 'Origo',
-    sourcePrefix: ''
+    sourcePrefix: '',
+    library: {
+      type: 'var',
+      export: 'default',
+      name: 'Origo'
+    }
   },
   devServer: {
-    contentBase: './',
-    port: 9966,
-    disableHostCheck: true
-  }
+    static: {
+      directory: './'
+    },
+    port: 9966
+  },
+  devtool: 'eval-cheap-source-map'
 });

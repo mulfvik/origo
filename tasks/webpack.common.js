@@ -5,11 +5,10 @@ const cesiumSource = 'node_modules/cesium/Source';
 
 module.exports = {
   entry: [
-    'babel-polyfill',
     'core-js/stable',
-    'whatwg-fetch',
     './origo.js'
   ],
+<<<<<<< HEAD
   module: {
     unknownContextCritical: false,
     rules: [
@@ -60,14 +59,13 @@ module.exports = {
   node: {
     fs: 'empty'
   },
+=======
+>>>>>>> upstream/master
   resolve: {
     extensions: ['*', '.js']
   },
   plugins: [
     new webpack.ProvidePlugin({
-      $: 'jquery',
-      jQuery: 'jquery',
-      'window.jQuery': 'jquery',
       proj4: 'proj4'
     }),
     // new webpack.ProvidePlugin({

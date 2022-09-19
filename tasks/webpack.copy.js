@@ -10,8 +10,10 @@ module.exports = merge(common, {
     libraryTarget: 'var',
     libraryExport: 'default',
     library: 'Origo',
-    sourcePrefix: ''
+    sourcePrefix: '',
+    chunkLoading: false
   },
+  devtool: false,
   mode: 'development',
   plugins: [
     new CopyWebpackPlugin({

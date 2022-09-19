@@ -7,7 +7,6 @@ export default function Collapse(options = {}) {
     expanded = false
   } = options;
   const {
-    legendCollapse = false,
     bubble = false,
     cls = '',
     collapseX = true,
@@ -28,7 +27,7 @@ export default function Collapse(options = {}) {
   const contentStyle = createStyle(contentStyleOptions);
   const toggleEvent = 'collapse:toggle';
   const collapseEvent = 'collapse:collapse';
-  let containerId = cuid();
+  const containerId = cuid();
   let collapseEl;
   let containerEl;
   let contentEl;
@@ -40,6 +39,14 @@ export default function Collapse(options = {}) {
     if (collapseX) containerEl.style.width = null;
   };
 
+  // Set tabindex for all buttons to include or exclude in taborder depending on if expanded or not
+  const setTabIndex = function setTabIndex(idx) {
+    // Skips the last button since it's slidenav and should be excluded from tab order
+    for (let i = 0; i < containerEl.getElementsByTagName('button').length - 1; i += 1) {
+      containerEl.getElementsByTagName('button')[i].tabIndex = idx;
+    }
+  };
+
   const expand = function expand() {
     if (!expanded) {
       collapseEl.classList.add('expanded');
@@ -48,6 +55,7 @@ export default function Collapse(options = {}) {
       if (collapseY) containerEl.style.height = `${newHeight}px`;
       if (collapseX) containerEl.style.width = `${newWidth}px`;
       containerEl.addEventListener('transitionend', onTransitionEnd);
+      setTabIndex(0);
     }
     expanded = true;
   };
@@ -60,6 +68,7 @@ export default function Collapse(options = {}) {
       const currentWidth = contentEl.scrollWidth;
       const elementTransition = containerEl.style.transition;
       containerEl.style.transition = '';
+      setTabIndex(-1);
       requestAnimationFrame(() => {
         if (collapseY) containerEl.style.height = `${currentHeight}px`;
         if (collapseX) containerEl.style.width = `${currentWidth}px`;
@@ -89,13 +98,14 @@ export default function Collapse(options = {}) {
     collapse,
     data,
     expand,
+    containerId,
     onInit() {
-      if ((headerComponent || footerComponent) && contentComponent) {
+      if (contentComponent) {
         if (headerComponent) { this.addComponent(headerComponent); }
         if (footerComponent) { this.addComponent(footerComponent); }
         this.addComponent(contentComponent);
       } else {
-        throw new Error('Header or content component is missing in collapse');
+        throw new Error('Content component is missing in collapse');
       }
     },
     onRender() {
@@ -104,6 +114,11 @@ export default function Collapse(options = {}) {
       collapseEl.addEventListener(collapseEvent, this.collapse.bind(this));
       containerEl = document.getElementById(containerId);
       contentEl = document.getElementById(contentComponent.getId());
+      if (expanded) {
+        setTabIndex(0);
+      } else {
+        setTabIndex(-1);
+      }
       this.dispatch('render');
     },
     render: function render() {
@@ -112,9 +127,6 @@ export default function Collapse(options = {}) {
       const isExpanded = expanded ? 'expanded' : '';
       const header = headerComponent ? headerComponent.render() : '';
       const footer = footerComponent ? footerComponent.render() : '';
-      if (legendCollapse) {
-        containerId = 'legendCollapse';
-      }
       return `<${tagName} id="${this.getId()}" class="${mainCls} ${cls} ${isExpanded}" style="${style}">
                 ${header}
                 <div id="${containerId}" class="${containerCls} ${contentCls}" style="${height} ${width} ${contentStyle}">

@@ -36,7 +36,7 @@ const Overlays = function Overlays(options) {
 
   const groupCmps = viewer.getGroups().reduce((acc, group) => {
     if (nonGroupNames.includes(group.name)) return acc;
-    return acc.concat(Group(group, viewer));
+    return acc.concat(Group(viewer, group));
   }, []);
 
   groupCmps.forEach((groupCmp) => {
@@ -64,7 +64,8 @@ const Overlays = function Overlays(options) {
     secondaryComponent: layerProps,
     cls: 'right flex width-100',
     style: { width: '100%' },
-    legendSlideNav: true
+    legendSlideNav: true,
+    viewer
   });
 
   const navContainer = Component({
@@ -88,7 +89,6 @@ const Overlays = function Overlays(options) {
   });
 
   const overlaysCollapse = Collapse({
-    legendCollapse: true,
     bubble: true,
     collapseX: false,
     cls: 'flex column overflow-hidden width-100',
@@ -140,6 +140,15 @@ const Overlays = function Overlays(options) {
     }
   };
 
+  const updateLegend = function updateLegend(comp) {
+    const parentName = comp.parent;
+    const parent = groupCmps.find((cmp) => cmp.name === parentName);
+    parent.dispatch('add:overlay');
+    if (parent.parent) {
+      updateLegend(parent);
+    }
+  };
+
   const addLayer = function addLayer(layer, {
     position
   } = {}) {
@@ -156,6 +165,12 @@ const Overlays = function Overlays(options) {
       if (groupCmp) {
         groupCmp.addOverlay(overlay);
         document.getElementById(groupCmp.getId()).classList.remove('hidden');
+
+        if (groupCmp.parent) {
+          updateLegend(groupCmp);
+        }
+      } else {
+        console.warn(`Group ${groupName} does not exist`);
       }
     }
   };
@@ -167,7 +182,7 @@ const Overlays = function Overlays(options) {
   };
 
   const addGroup = function addGroup(groupOptions) {
-    const groupCmp = Group(groupOptions, viewer);
+    const groupCmp = Group(viewer, groupOptions);
     groupCmps.push(groupCmp);
     if (groupCmp.type === 'grouplayer') {
       const parent = groupCmps.find((cmp) => cmp.name === groupCmp.parent);
@@ -227,6 +242,7 @@ const Overlays = function Overlays(options) {
     onAddGroup,
     onChangeLayer,
     slidenav,
+    overlaysCollapse,
     onInit() {
       this.addComponent(overlaysCollapse);
       readOverlays();
@@ -252,6 +268,17 @@ const Overlays = function Overlays(options) {
           });
           slidenav.setSecondary(layerProperties);
           slidenav.slideToSecondary();
+          // Include back btn and opacity slider in tab order when opened and remove when closed
+          const secondaryEl = document.getElementById(slidenav.getId()).querySelector('.secondary');
+          const backBtn = secondaryEl.getElementsByTagName('button')[0];
+          const opacityInput = secondaryEl.getElementsByTagName('input')[0];
+          backBtn.tabIndex = 0;
+          backBtn.focus();
+          opacityInput.tabIndex = 0;
+          backBtn.addEventListener('click', () => {
+            backBtn.tabIndex = -99;
+            opacityInput.tabIndex = -99;
+          }, false);
           slidenav.on('slide', () => {
             el.classList.remove('width-100');
           });

@@ -1,6 +1,6 @@
 const { merge } = require('webpack-merge');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const common = require('./webpack.common.js');
+const common = require('./webpack.common');
 
 module.exports = merge(common, {
   context: `${__dirname}/../`,
@@ -10,7 +10,8 @@ module.exports = merge(common, {
     libraryTarget: 'var',
     libraryExport: 'default',
     library: 'Origo',
-    sourcePrefix: ''
+    sourcePrefix: '',
+    chunkLoading: false
   },
   mode: 'development',
   plugins: [

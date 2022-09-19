@@ -4,6 +4,7 @@ import geom from 'ol/geom/Geometry';
 import { Component } from './ui';
 import Map from './map';
 import proj from './projection';
+import getCapabilities from './getCapabilities';
 import MapSize from './utils/mapsize';
 import Featureinfo from './featureinfo';
 import Selectionmanager from './selectionmanager';
@@ -13,9 +14,9 @@ import Layer from './layer';
 import Main from './components/main';
 import Footer from './components/footer';
 import flattenGroups from './utils/flattengroups';
-import getAttributes from './getattributes';
 import getcenter from './geometry/getcenter';
 import isEmbedded from './utils/isembedded';
+import permalink from './permalink/permalink';
 
 const Viewer = function Viewer(targetOption, options = {}) {
   let map;
@@ -24,10 +25,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
   let selectionmanager;
 
   let {
-    projection
-  } = options;
-
-  const {
+    projection,
     breakPoints,
     breakPointsPrefix,
     clsOptions = '',
@@ -60,6 +58,25 @@ const Viewer = function Viewer(targetOption, options = {}) {
   const center = urlParams.center || centerOption;
   const zoom = urlParams.zoom || zoomOption;
   const groups = flattenGroups(groupOptions);
+  const layerStylePicker = {};
+
+  const getCapabilitiesLayers = () => {
+    const capabilitiesPromises = [];
+    (Object.keys(source)).forEach(sourceName => {
+      const sourceOptions = source[sourceName];
+      if (sourceOptions && sourceOptions.capabilitiesURL) {
+        capabilitiesPromises.push(getCapabilities(sourceName, sourceOptions.capabilitiesURL));
+      }
+    });
+    return Promise.all(capabilitiesPromises).then(capabilitiesResults => {
+      const layers = {};
+      capabilitiesResults.forEach(result => {
+        layers[result.name] = result.capabilites;
+      });
+      return layers;
+    }).catch(error => console.log(error));
+  };
+
   const defaultTileGridOptions = {
     alignBottomLeft: true,
     extent,
@@ -130,6 +147,12 @@ const Viewer = function Viewer(targetOption, options = {}) {
       return styles[styleName];
     }
     return null;
+  };
+
+  const setStyle = (styleName, style) => {
+    if (styleName in styles) {
+      styles[styleName] = style;
+    }
   };
 
   const getStyles = () => styles;
@@ -221,6 +244,13 @@ const Viewer = function Viewer(targetOption, options = {}) {
     throw new Error(`There is no source with name: ${name}`);
   };
 
+  const getSource2 = function getSource2(name) {
+    if (name in source) {
+      return source[name];
+    }
+    return undefined;
+  };
+
   const getGroups = () => groups;
 
   const getProjectionCode = () => projectionCode;
@@ -258,23 +288,59 @@ const Viewer = function Viewer(targetOption, options = {}) {
     return isEmbedded(this.getTarget());
   };
 
-  const mergeSavedLayerProps = (initialLayerProps, savedLayerProps) => {
-    if (savedLayerProps) {
-      const mergedLayerProps = initialLayerProps.reduce((acc, initialProps) => {
-        const layerName = initialProps.name.split(':').pop();
-        const savedProps = savedLayerProps[layerName] || {
-          visible: false,
-          legend: false
-        };
-        savedProps.name = initialProps.name;
-        const mergedProps = Object.assign({}, initialProps, savedProps);
-        acc.push(mergedProps);
-        return acc;
-      }, []);
-      return mergedLayerProps;
+  const mergeSecuredLayer = (layerlist, capabilitiesLayers) => {
+    if (capabilitiesLayers && Object.keys(capabilitiesLayers).length > 0) {
+      return layerlist.map(layer => {
+        let secure;
+        let layername = layer.name;
+        // remove workspace if syntax is workspace:layername
+        layername = layername.split(':').pop();
+        // remove double underscore plus a suffix from layer name
+        if (layername.includes('__')) {
+          layername = layername.substring(0, layername.lastIndexOf('__'));
+        }
+        const layerSourceOptions = layer.source ? getSource2(layer.source) : undefined;
+        if (layerSourceOptions && layerSourceOptions.capabilitiesURL) {
+          if (capabilitiesLayers[layer.source].indexOf(layername) >= 0) {
+            secure = false;
+          } else {
+            secure = true;
+          }
+        } else {
+          secure = false;
+        }
+        return { ...layer, secure };
+      });
     }
-    return initialLayerProps;
+    return layerlist;
   };
+
+  const mergeSavedLayerProps = (initialLayerProps, savedLayerProps) => getCapabilitiesLayers()
+    .then(capabilitiesLayers => {
+      let mergedLayerProps;
+      if (savedLayerProps) {
+        mergedLayerProps = initialLayerProps.reduce((acc, initialProps) => {
+          const layerName = initialProps.name.split(':').pop();
+          const savedProps = savedLayerProps[layerName] || {
+            visible: false,
+            legend: false
+          };
+          // Apply changed style
+          if (savedLayerProps[layerName] && savedLayerProps[layerName].altStyleIndex > -1) {
+            const altStyle = initialProps.stylePicker[savedLayerProps[layerName].altStyleIndex];
+            savedProps.clusterStyle = altStyle.clusterStyle;
+            savedProps.style = altStyle.style;
+            savedProps.defaultStyle = initialProps.style;
+          }
+          savedProps.name = initialProps.name;
+          const mergedProps = Object.assign({}, initialProps, savedProps);
+          acc.push(mergedProps);
+          return acc;
+        }, []);
+        return mergeSecuredLayer(mergedLayerProps, capabilitiesLayers);
+      }
+      return mergeSecuredLayer(initialLayerProps, capabilitiesLayers);
+    });
 
   const removeOverlays = function removeOverlays(overlays) {
     if (overlays) {
@@ -311,8 +377,19 @@ const Viewer = function Viewer(targetOption, options = {}) {
     return false;
   };
 
+  const getLayerStylePicker = function getLayerStylePicker(layer) {
+    return layerStylePicker[layer.get('name')] || [];
+  };
+
+  const addLayerStylePicker = function addLayerStylePicker(layerProps) {
+    if (!layerStylePicker[layerProps.name]) {
+      layerStylePicker[layerProps.name] = layerProps.stylePicker;
+    }
+  };
+
   const addLayer = function addLayer(layerProps) {
     const layer = Layer(layerProps, this);
+    addLayerStylePicker(layerProps);
     map.addLayer(layer);
     this.dispatch('addlayer', {
       layerName: layerProps.name
@@ -385,6 +462,11 @@ const Viewer = function Viewer(targetOption, options = {}) {
     }
   };
 
+  const addMarker = function addMarker(coordinates, title, content) {
+    const layer = maputils.createMarker(coordinates, title, content, this);
+    map.addLayer(layer);
+  };
+
   const getUrlParams = function getUrlParams() {
     return urlParams;
   };
@@ -403,81 +485,92 @@ const Viewer = function Viewer(targetOption, options = {}) {
 
       setMap(Map(Object.assign(options, { projection, center, zoom, target: this.getId() })));
 
-      const layerProps = mergeSavedLayerProps(layerOptions, urlParams.layers);
-      this.addLayers(layerProps);
+      mergeSavedLayerProps(layerOptions, urlParams.layers)
+        .then(layerProps => {
+          this.addLayers(layerProps);
 
-      mapSize = MapSize(map, {
-        breakPoints,
-        breakPointsPrefix,
-        mapId: this.getId()
-      });
+          mapSize = MapSize(map, {
+            breakPoints,
+            breakPointsPrefix,
+            mapId: this.getId()
+          });
 
-      if (urlParams.feature) {
-        let featureId = urlParams.feature;
-        const layerName = featureId.split('.')[0];
-        const layer = getLayer(layerName);
-        const type = layer.get('type');
+          if (urlParams.feature) {
+            const featureId = urlParams.feature;
+            const layerName = featureId.split('.')[0];
+            const layer = getLayer(layerName);
+            const layerType = layer.get('type');
+            if (layer && layerType !== 'GROUP') {
+              // FIXME: postrender event is only emitted if any features from a layer is actually drawn, which means there is no feature in the default extent,
+              // it will not be triggered until map is panned or zoomed where a feature exists.
+              layer.once('postrender', () => {
+                const clusterSource = layer.getSource().source;
+                // Assume that id is just the second part of the argumment and adjust it for special cases later.
+                let id = featureId.split('.')[1];
+                let feature;
 
-        if (layer && type !== 'GROUP') {
-          const clusterSource = layer.getSource().source;
-          const id = featureId.split('.')[1];
-          layer.once('postrender', () => {
-            let feature;
+                if (layerType === 'WFS') {
+                  // WFS uses the layername as a part of the featureId. Problem is that it what the server think is the name that matters.
+                  // First we assume that the layername is actually correct, then take the special cases
+                  let idLayerPart = layerName;
+                  const layerId = layer.get('id');
+                  if (layerId) {
+                    // if layer explicitly has set the id it takes precedense over name
+                    // layer name already have popped the namespace part, but id is untouched.
+                    idLayerPart = layerId.split(':').pop();
+                  } else if (layerName.includes('__')) {
+                    // If using the __-notation to use same layer several times, we must only use the actual layer name
+                    idLayerPart = layerName.split('__')[0];
+                  }
+                  // Build the correct WFS id
+                  id = `${idLayerPart}.${id}`;
+                }
+                // FIXME: ensure that feature is loaded. If using bbox and feature is outside default extent it will not be found.
+                // Workaround is to have a default extent covering the entire map with the layer in visible range or use strategy all
+                if (clusterSource) {
+                  feature = clusterSource.getFeatureById(id);
+                } else {
+                  feature = layer.getSource().getFeatureById(id);
+                }
 
-            if (type === 'WFS' && clusterSource) {
-              feature = clusterSource.getFeatureById(featureId);
-            } else if (type === 'WFS') {
-              if (featureId.includes('__')) {
-                featureId = featureId.replace(featureId.substring(featureId.lastIndexOf('__'), featureId.lastIndexOf('.')), '');
-              }
-              feature = layer.getSource().getFeatureById(featureId);
-            } else if (clusterSource) {
-              feature = clusterSource.getFeatureById(id);
-            } else {
-              feature = layer.getSource().getFeatureById(id);
-            }
-
-            if (feature) {
-              const obj = {};
-              obj.feature = feature;
-              obj.title = layer.get('title');
-              obj.content = getAttributes(feature, layer);
-              obj.layer = layer;
-              const centerGeometry = getcenter(feature.getGeometry());
-              const infowindowType = featureinfoOptions.showOverlay === false ? 'sidebar' : 'overlay';
-              featureinfo.render([obj], infowindowType, centerGeometry);
-              map.getView().fit(feature.getGeometry(), {
-                maxZoom: getResolutions().length - 2,
-                padding: [15, 15, 40, 15],
-                duration: 1000
+                if (feature) {
+                  const obj = {};
+                  obj.feature = feature;
+                  obj.layerName = layerName;
+                  featureinfo.showFeatureInfo(obj);
+                  map.getView().fit(feature.getGeometry(), {
+                    maxZoom: getResolutions().length - 2,
+                    padding: [15, 15, 40, 15],
+                    duration: 1000
+                  });
+                }
               });
             }
-          });
-        }
-      }
+          }
 
-      if (urlParams.pin) {
-        featureinfoOptions.savedPin = urlParams.pin;
-      } else if (urlParams.selection) {
-        // This needs further development for proper handling in permalink
-        featureinfoOptions.savedSelection = new Feature({
-          geometry: new geom[urlParams.selection.geometryType](urlParams.selection.coordinates)
+          if (urlParams.pin) {
+            featureinfoOptions.savedPin = urlParams.pin;
+          } else if (urlParams.selection) {
+            // This needs further development for proper handling in permalink
+            featureinfoOptions.savedSelection = new Feature({
+              geometry: new geom[urlParams.selection.geometryType](urlParams.selection.coordinates)
+            });
+          }
+
+          if (!urlParams.zoom && !urlParams.mapStateId && startExtent) {
+            map.getView().fit(startExtent, { size: map.getSize() });
+          }
+
+          featureinfoOptions.viewer = this;
+
+          selectionmanager = Selectionmanager(featureinfoOptions);
+          featureinfo = Featureinfo(featureinfoOptions);
+          this.addComponent(selectionmanager);
+          this.addComponent(featureinfo);
+
+          this.addControls();
+          this.dispatch('loaded');
         });
-      }
-
-      if (!urlParams.zoom && !urlParams.mapStateId && startExtent) {
-        map.getView().fit(startExtent, { size: map.getSize() });
-      }
-
-      featureinfoOptions.viewer = this;
-
-      selectionmanager = Selectionmanager(featureinfoOptions);
-      this.addComponent(selectionmanager);
-
-      featureinfo = Featureinfo(featureinfoOptions);
-      this.addComponent(featureinfo);
-
-      this.addControls();
     },
     render() {
       const htmlString = `<div id="${this.getId()}" class="${cls}">
@@ -485,6 +578,10 @@ const Viewer = function Viewer(targetOption, options = {}) {
                               ${main.render()}
                               ${footer.render()}
                             </div>
+                          </div>
+                              
+                          <div id="loading" class="hide">
+                            <div class="loading-spinner"></div>
                           </div>`;
       const el = document.querySelector(target);
       el.innerHTML = htmlString;
@@ -498,6 +595,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
     addLayers,
     addSource,
     addStyle,
+    addMarker,
     getBreakPoints,
     getCenter,
     getClusterOptions,
@@ -520,6 +618,7 @@ const Viewer = function Viewer(targetOption, options = {}) {
     getSearchableLayers,
     getSize,
     getLayer,
+    getLayerStylePicker,
     getLayers,
     getLayersByProperty,
     getMap,
@@ -538,9 +637,11 @@ const Viewer = function Viewer(targetOption, options = {}) {
     getViewerOptions,
     removeGroup,
     removeOverlays,
+    setStyle,
     zoomToExtent,
     getSelectionManager,
-    getEmbedded
+    getEmbedded,
+    permalink
   });
 };
 
