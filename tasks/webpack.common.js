@@ -8,7 +8,6 @@ module.exports = {
     'core-js/stable',
     './origo.js'
   ],
-<<<<<<< HEAD
   module: {
     unknownContextCritical: false,
     rules: [
@@ -59,8 +58,6 @@ module.exports = {
   node: {
     fs: 'empty'
   },
-=======
->>>>>>> upstream/master
   resolve: {
     extensions: ['*', '.js']
   },
