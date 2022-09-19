@@ -34,3 +34,6 @@
 .z-index-ontop-top {
   z-index: $z-top + $z-top;
 }
+.z-index-ontop-top-times20 {
+  z-index: $z-top + $z-top * 20;
+}
