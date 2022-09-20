@@ -242,15 +242,15 @@ const Featureinfo = function Featureinfo(options = {}) {
       let modalStyle = '';
       switch (targ.target) {
         case 'modal-full':
-          {
-            modalStyle = 'max-width:unset;width:98%;height:98%;resize:both;overflow:auto;display:flex;flex-flow:column;';
-            break;
-          }
+        {
+          modalStyle = 'max-width:unset;width:98%;height:98%;resize:both;overflow:auto;display:flex;flex-flow:column;';
+          break;
+        }
         default:
-          {
-            modalStyle = 'resize:both;overflow:auto;display:flex;flex-flow:column;';
-            break;
-          }
+        {
+          modalStyle = 'resize:both;overflow:auto;display:flex;flex-flow:column;';
+          break;
+        }
       }
       Modal({
         title: targ.title,
@@ -424,19 +424,9 @@ const Featureinfo = function Featureinfo(options = {}) {
               targetElement = element;
             }
           });
-          popup.setVisibility(true);
-          initCarousel('#o-identify-carousel');
-          const firstFeature = items[0].feature;
-          if (items[0].feature.ol_uid) {
-            geometry = firstFeature.getGeometry();
-            const clone = firstFeature.clone();
-            clone.setId(firstFeature.getId());
-            clone.layerName = firstFeature.name;
-            selectionLayer.clearAndAdd(
-              clone,
-              selectionStyles[geometry.getType()]
-            );
-            selectionLayer.setSourceLayer(items[0].layer);
+          const imageCarouselEl = document.getElementsByClassName(`o-image-carousel${carouselId}`);
+          if (imageCarouselEl.length > 0) {
+            initImageCarousel(`#o-image-carousel${carouselId}`, `.o-image-content${carouselId}`, carouselId, targetElement);
           }
         });
         const popupEl = popup.getEl();
@@ -486,18 +476,18 @@ const Featureinfo = function Featureinfo(options = {}) {
         break;
       }
       case 'infowindow':
-        {
-          if (items.length === 1) {
-            selectionManager.addOrHighlightItem(items[0]);
-          } else if (items.length > 1) {
-            selectionManager.addItems(items);
-          }
-          break;
+      {
+        if (items.length === 1) {
+          selectionManager.addOrHighlightItem(items[0]);
+        } else if (items.length > 1) {
+          selectionManager.addItems(items);
         }
+        break;
+      }
       default:
-        {
-          break;
-        }
+      {
+        break;
+      }
     }
 
     const modalLinks = document.getElementsByClassName('o-identify-link-modal');

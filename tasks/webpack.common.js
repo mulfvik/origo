@@ -1,73 +1,17 @@
 const webpack = require('webpack');
-const path = require('path');
-
-const cesiumSource = 'node_modules/cesium/Source';
 
 module.exports = {
   entry: [
     'core-js/stable',
     './origo.js'
   ],
-  module: {
-    unknownContextCritical: false,
-    rules: [
-      {
-        test: /\.m?js$/,
-        enforce: 'pre',
-        use: ['source-map-loader']
-      },
-      {
-        test: /\.(js)$/,
-        exclude: {
-          test: /node_modules/,
-          not: [
-            /@mapbox/,
-            /@glidejs/
-          ]
-        },
-        use: {
-          loader: 'babel-loader'
-        }
-      },
-      {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
-      },
-      {
-        test: /\.(png|gif|jpg|jpeg|svg|xml|json)$/,
-        use: ['url-loader']
-      },
-      {
-        test: /\.js$/,
-        enforce: 'pre',
-        include: path.resolve(__dirname, cesiumSource),
-        use: [{
-          loader: 'strip-pragma-loader',
-          options: {
-            pragmas: {
-              debug: false
-            }
-          }
-        }]
-      }
-    ]
-  },
-  amd: {
-    toUrlUndefined: true
-  },
-  node: {
-    fs: 'empty'
-  },
   resolve: {
-    extensions: ['*', '.js']
+    fallback: { "https": false, "zlib": false, "http": false, "url": false }
   },
   plugins: [
     new webpack.ProvidePlugin({
       proj4: 'proj4'
     }),
-    // new webpack.ProvidePlugin({
-    //   fetch: 'exports-loader?self.fetch!whatwg-fetch/dist/fetch.umd'
-    // }),
     new webpack.DefinePlugin({
       CESIUM_BASE_URL: JSON.stringify('dist/thirdparty/cesiumassets')
     })

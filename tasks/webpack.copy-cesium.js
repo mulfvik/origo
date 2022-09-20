@@ -10,13 +10,13 @@ module.exports = merge(common, {
   context: `${__dirname}/../`,
   output: {
     path: `${__dirname}/../`,
-    filename: 'build/js/origo.js',
+    filename: 'js/origo.js',
     libraryTarget: 'var',
     libraryExport: 'default',
     library: 'Origo',
-    sourcePrefix: ''
+    chunkLoading: false
   },
-  mode: 'none',
+  mode: 'development',
   plugins: [
     new CopyWebpackPlugin(
       {
