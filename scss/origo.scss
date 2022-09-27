@@ -3,6 +3,7 @@
 @import 'variables';
 @import 'ui/ui';
 @import 'bookmark';
+@import 'externs/flatpickr/import.scss';
 
 .o-map {
   display: flex;
@@ -15,7 +16,6 @@
   @import 'ol';
   @import 'externs/glidejs/import.scss';
   @import 'glide/custom';
-  @import 'externs/flatpickr/import.scss';
   @import 'card';
   @import 'container';
   @import 'toolbar';
