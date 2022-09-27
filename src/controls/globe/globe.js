@@ -125,7 +125,7 @@ const Globe = function Globe(options = {}) {
       cesium3dTiles.forEach((tilesAsset) => {
         const url = tilesAsset.url;
         let shadows = tilesAsset.shadows;
-        let conditions = tilesAsset.style;
+        let conditions = tilesAsset.style || undefined;
         let show = tilesAsset.filter || 'undefined';
         if (typeof url === 'number' && cesiumIontoken) {
           tileset = new Cesium.Cesium3DTileset({
@@ -156,12 +156,16 @@ const Globe = function Globe(options = {}) {
         }
         // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
         scene.primitives.add(tileset);
-        tileset.style = new Cesium.Cesium3DTileStyle({
-          color: {
-            conditions
-          },
-          show
-        });
+
+        if (conditions) {
+          tileset.style = new Cesium.Cesium3DTileStyle({
+            color: {
+              conditions
+            },
+            show
+          });
+        }
+
       });
     }
   };

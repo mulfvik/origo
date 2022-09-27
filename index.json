@@ -80,11 +80,11 @@
             }
           }
         },
-        "cesiumIontoken": "",
+        "cesiumIontoken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NTJmNzdhOS0xMDMxLTRiZGMtYmZiNy00NzdjZWMwZWY3YWMiLCJpZCI6MTA2MDg0LCJpYXQiOjE2NjE2MTQxODN9.lg2GZrEpAGrwJozIZyw5fZbSAQZz75MzknE01yXnd9k",
         "cesium3dTiles": [
           {
             "url": "OSM-Buildings",
-            "maximumScreenSpaceError": 2,
+            "maximumScreenSpaceError": 10,
             "outline": true,
             "shadows": true,
             "filter": "${feature['elementId']} !== 251329024 && ${feature['elementId']} !== 425027205 && ${feature['elementId']} !== 425002757",
@@ -122,6 +122,12 @@
                 "color('#ef7f77', 1)"
               ]
             ]
+          },
+          {
+            "url":  1286474,
+            "maximumScreenSpaceError": 10,
+            "outline": true,
+            "shadows": true
           }
         ],
         "cesiumTerrainProvider": "",
@@ -153,10 +159,10 @@
     20037508.34
   ],
   "center": [
-    1770000,
-    8770000
+    -100000,
+    5372000
   ],
-  "zoom": 7,
+  "zoom": 13,
   "resolutions": [
     156543.03390625,
     78271.516953125,
