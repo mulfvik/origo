@@ -4,6 +4,8 @@ import proj4 from 'proj4';
 import { Component, Button, dom, Element as El } from '../../ui';
 import getAttributes from '../../getattributes';
 import flatpickr from "flatpickr";
+import Point from 'ol/geom/Point';
+import Feature from 'ol/Feature';
 
 // ol-cesium depends on a global Cesium
 window.Cesium = Cesium;
@@ -215,6 +217,7 @@ const Globe = function Globe(options = {}) {
         const lat = Cesium.Math.toDegrees(Number(cartographic.latitude));
         // Use alt for height
         // const alt = cartographic.height;
+        coordinate = [lon, lat];
         if (viewer.getProjectionCode() === 'EPSG:3857') {
           coordinate = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
         }
@@ -225,17 +228,23 @@ const Globe = function Globe(options = {}) {
         propertyIds.forEach(propertyId => {
           const propId = feature.getProperty(propertyId);
           title = feature.getProperty('name');
-          if (title === 'undefined') {
+          if (title === undefined) {
             title = `Byggnadsid: ${feature.getProperty('elementId')}`;
           }
-          if (propId !== 'undefined') {
+          if (propId !== undefined) {
             const content = `<ul><li><b>${propertyId}:</b> ${feature.getProperty(propertyId)}</li>`;
             contentItems.push(content);
           }
         });
         obj.title = `${title}`;
         obj.content = `${contentItems.join(' ')}</ul>`;
-        obj.feature = feature;
+        //skapar en ny olFeature här baserat på 2D-koordinaterna att skicka in till featureInfo
+        //pga doRender() vill ha en sån. Utan Feature renderas popup på fel ställe,
+        //även om man skickar med koordinater till featureInfo.render()
+        obj.feature = new Feature({
+          geometry: new Point(coordinate),
+          name: 'DummyPoint',
+        });
 
         featureInfo.render([obj], 'overlay', coordinate, coordinate);
       } else if (!Cesium.defined(feature)) {
