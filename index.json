@@ -80,7 +80,7 @@
             }
           }
         },
-        "cesiumIontoken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhY2E0YmM1Mi1kMzY1LTQ5OWUtOWUxNS05MzJkY2ExN2FiMTEiLCJpZCI6NDAxMDgsImlhdCI6MTY1MTc1NDg4MX0.rpYAxY3twCcx3VW-UPb2LjOVKjHxIetB_We6R2oAOB4",
+        "cesiumIontoken": "",
         "cesium3dTiles": [
           {
             "url": "OSM-Buildings",
@@ -326,3 +326,4 @@
     ]
   }
 }
+
