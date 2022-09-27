@@ -4,4 +4,4 @@ css/style.css
 node_modules
 npm-debug-log
 plugins
-/index.json
+/package-locks.json

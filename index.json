@@ -40,7 +40,7 @@
       "name": "legend",
       "options": {
         "labelOpacitySlider": "Opacity",
-        "useGroupIndication": true
+        "useGroupIndication" : true
       }
     },
     {
@@ -55,84 +55,6 @@
     },
     {
       "name": "measure"
-    },
-    {
-      "name": "globe",
-      "options": {
-        "showGlobe": true,
-        "globeOnStart": true,
-        "settings": {
-          "depthTestAgainstTerrain": false,
-          "enableAtmosphere": true,
-          "enableGroundAtmosphere": true,
-          "enableFog": true,
-          "enableLighting": true,
-          "enableShadows": true,
-          "skyBox": {
-            "url": "http://localhost:9966/dist/thirdparty/cesiumassets/Assets/Textures/SkyBox/",
-            "images": {
-              "pX": "tycho2t3_80_px.jpg",
-              "nX": "tycho2t3_80_mx.jpg",
-              "pY": "tycho2t3_80_py.jpg",
-              "nY": "tycho2t3_80_my.jpg",
-              "pZ": "tycho2t3_80_pz.jpg",
-              "nZ": "tycho2t3_80_mz.jpg"
-            }
-          }
-        },
-        "cesiumIontoken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NTJmNzdhOS0xMDMxLTRiZGMtYmZiNy00NzdjZWMwZWY3YWMiLCJpZCI6MTA2MDg0LCJpYXQiOjE2NjE2MTQxODN9.lg2GZrEpAGrwJozIZyw5fZbSAQZz75MzknE01yXnd9k",
-        "cesium3dTiles": [
-          {
-            "url": "OSM-Buildings",
-            "maximumScreenSpaceError": 10,
-            "outline": true,
-            "shadows": true,
-            "filter": "${feature['elementId']} !== 251329024 && ${feature['elementId']} !== 425027205 && ${feature['elementId']} !== 425002757",
-            "style": [
-              [
-                "${feature['building']} === 'civic' || ${feature['building']} === 'construction' || ${feature['building']} === 'church'",
-                "color('#ed6258', 1)"
-              ],
-              [
-                "${feature['building']} === 'commercial' || ${feature['building']} === 'retail' || ${feature['building']} === 'office'",
-                "color('#af8b74', 1)"
-              ],
-              [
-                "${feature['building']} === 'apartments' || ${feature['building']} === 'residential' || ${feature['building']} === 'house' || ${feature['building']} === 'yes' || ${feature['building']} === 'roof'",
-                "color('#c98754', 1)"
-              ],
-              [
-                "${feature['building']} === 'warehouse' || ${feature['building']} === 'manufacture' || ${feature['building']} === 'industrial'",
-                "color('#919494', 1)"
-              ],
-              [
-                "${feature['building']} === 'school' || ${feature['amenity']} === 'university' || ${feature['building']} === 'kindergarten'",
-                "color('#ef7f77', 1)"
-              ],
-              [
-                "${feature['building']} === 'parking' || ${feature['amenity']} === 'parking' || ${feature['building']} === 'garages' || ${feature['building']} === 'garage'",
-                "color('#af8b74', 1)"
-              ],
-              [
-                "${feature['building']} === 'farm_auxiliary' || ${feature['building']} === 'detached'",
-                "color('#a69774', 1)"
-              ],
-              [
-                true,
-                "color('#ef7f77', 1)"
-              ]
-            ]
-          },
-          {
-            "url":  1286474,
-            "maximumScreenSpaceError": 10,
-            "outline": true,
-            "shadows": true
-          }
-        ],
-        "cesiumTerrainProvider": "",
-        "cesiumIonassetIdTerrain": ""
-      }
     }
   ],
   "pageSettings": {
@@ -147,54 +69,48 @@
   },
   "projectionCode": "EPSG:3857",
   "projectionExtent": [
-    -20037508.34,
-    -20037508.34,
-    20037508.34,
-    20037508.34
+    -20026376.39,
+    -20048966.10,
+    20026376.39,
+    20048966.10
+  ],
+  "proj4Defs": [
+    {
+      "code": "EPSG:3006",
+      "projection": "+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    }
   ],
   "extent": [
-    -20037508.34,
-    -20037508.34,
-    20037508.34,
-    20037508.34
+    -20026376.39,
+    -20048966.10,
+    20026376.39,
+    20048966.10
   ],
   "center": [
-    -100000,
-    5372000
+    1810000,
+    8390000
   ],
-  "zoom": 13,
+  "zoom": 5.7,
   "resolutions": [
-    156543.03390625,
-    78271.516953125,
-    39135.7584765625,
-    19567.87923828125,
-    9783.939619140625,
-    4891.9698095703125,
-    2445.9849047851562,
-    1222.9924523925781,
-    611.4962261962891,
-    305.74811309814453,
-    152.87405654907226,
-    76.43702827453613,
-    38.218514137268066,
-    19.109257068634033,
-    9.554628534317017,
-    4.777314267158508,
-    2.388657133579254,
-    1.194328566789627,
-    0.5971642833948135,
-    0.29858214169740677,
-    0.14929107084870338,
-    0.07464553542435169,
-    0.037322767712175846,
-    0.018661383856087923,
-    0.009330691928043961,
-    0.004665345964021981,
-    0.0023326729820109904,
-    0.0011663364910054952,
-    5.831682455027476E-4,
-    2.915841227513738E-4,
-    1.457920613756869E-4
+    156543.03,
+    78271.52,
+    39135.76,
+    19567.88,
+    9783.94,
+    4891.97,
+    2445.98,
+    1222.99,
+    611.50,
+    305.75,
+    152.87,
+    76.437,
+    38.219,
+    19.109,
+    9.5546,
+    4.7773,
+    2.3887,
+    1.1943,
+    0.5972
   ],
   "featureinfoOptions": {
     "infowindow": "overlay"
@@ -224,6 +140,17 @@
           "name": "name"
         }
       ],
+      "visible": true
+    },
+    {
+      "name": "origo-mask",
+      "opacity": 0.25,
+      "title": "origo-mask",
+      "group": "none",
+      "queryable": false,
+      "source": "data/origo-mask-3857.geojson",
+      "style": "mask",
+      "type": "GEOJSON",
       "visible": true
     },
     {
