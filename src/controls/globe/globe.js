@@ -254,7 +254,7 @@ const Globe = function Globe(options = {}) {
         const primitive = feature.primitive.olFeature;
         const layer = feature.primitive.olLayer;
 
-        obj.feature = feature;
+        obj.feature = primitive;
         obj.title = feature.primitive.olLayer.get('title');
         obj.content = getAttributes(primitive, layer);
         obj.layer = layer;
