@@ -1,22 +1,18 @@
-import * as Cesium from 'cesium';
-import OLCesium from 'olcs/OLCesium';
-import proj4 from 'proj4';
-import { Component, Button, dom, Element as El } from '../../ui';
-import getAttributes from '../../getattributes';
+import * as Cesium from "cesium";
+import OLCesium from "olcs/OLCesium";
+import proj4 from "proj4";
+import { Component, Button, dom, Element as El } from "../../ui";
+import getAttributes from "../../getattributes";
 import flatpickr from "flatpickr";
-import Point from 'ol/geom/Point';
-import Feature from 'ol/Feature';
+import Point from "ol/geom/Point";
+import Feature from "ol/Feature";
+import { Threedtile } from "../../layer/threedtile";
 
 // ol-cesium depends on a global Cesium
 window.Cesium = Cesium;
 
 const Globe = function Globe(options = {}) {
-
-  let {
-    target,
-    globeOnStart,
-    showGlobe = true
-  } = options;
+  let { target, globeOnStart, showGlobe = true } = options;
 
   const {
     resolutionScale = window.devicePixelRatio,
@@ -24,7 +20,7 @@ const Globe = function Globe(options = {}) {
     cesium3dTiles,
     cesiumTerrainProvider,
     cesiumIontoken,
-    cesiumIonassetIdTerrain
+    cesiumIonassetIdTerrain,
   } = options;
 
   let map;
@@ -46,18 +42,25 @@ const Globe = function Globe(options = {}) {
 
   // Toggles between 2D and 3D
   const toggleGlobe = () => {
-    // Check if map projection is EPSG:4326 or EPSG:3857. 
+    // Check if map projection is EPSG:4326 or EPSG:3857.
     // If map has other projection, don't activate globe and console error
-    if (viewer.getProjectionCode() === 'EPSG:4326' || viewer.getProjectionCode() === 'EPSG:3857') {
+    if (
+      viewer.getProjectionCode() === "EPSG:4326" ||
+      viewer.getProjectionCode() === "EPSG:3857"
+    ) {
       oGlobe.setEnabled(!oGlobe.getEnabled());
     } else {
-      console.error('Map projection must be EPSG:4326 or EPSG:3857 to be able to use globe mode.');
+      console.error(
+        "Map projection must be EPSG:4326 or EPSG:3857 to be able to use globe mode."
+      );
     }
   };
 
   // Init map with globe or not
   const activeGlobeOnStart = () => {
-    const activeOnStart = globeOnStart ? toggleGlobe() : oGlobe.setEnabled(false);
+    const activeOnStart = globeOnStart
+      ? toggleGlobe()
+      : oGlobe.setEnabled(false);
     return activeOnStart;
   };
 
@@ -74,7 +77,9 @@ const Globe = function Globe(options = {}) {
   // TODO
   // Put the cesium credits in origo credits container in origo style
   const cesiumCredits = () => {
-    document.querySelectorAll('.cesium-credit-logoContainer')[0].parentNode.style.display = 'none';
+    document.querySelectorAll(
+      ".cesium-credit-logoContainer"
+    )[0].parentNode.style.display = "none";
   };
 
   // Terrain providers
@@ -84,7 +89,7 @@ const Globe = function Globe(options = {}) {
         requestVertexNormals: true,
         // Add as option for 3D Tiles request
         // requestWaterMask: true,
-        url: cesiumTerrainProvider
+        url: cesiumTerrainProvider,
       });
       scene.terrainProvider = terrain;
     } else if (cesiumIonassetIdTerrain && cesiumIontoken) {
@@ -92,23 +97,23 @@ const Globe = function Globe(options = {}) {
         requestVertexNormals: true,
         // Add as option for 3D Tiles request
         // requestWaterMask: true,
-        url: Cesium.IonResource.fromAssetId(cesiumIonassetIdTerrain)
+        url: Cesium.IonResource.fromAssetId(cesiumIonassetIdTerrain),
       });
       scene.terrainProvider = terrain;
     } else if (cesiumIontoken) {
       // Cesium world terrain is used as default if token is present
       terrain = Cesium.createWorldTerrain({
-        requestVertexNormals: true
+        requestVertexNormals: true,
       });
       scene.terrainProvider = terrain;
     }
   };
 
   // Hides 3D tiles elements by id, not in use, using filter instead
-  // TODO 
+  // TODO
   // Create helper to get array of id's from defined bbox or polygon
   const hide3DtilesById = (ids, tilesets) => {
-    const elementid = '${elementId} === ';
+    const elementid = "${elementId} === ";
     const conditions = [];
     ids.forEach((id) => {
       conditions.push([elementid + id, false]);
@@ -116,20 +121,33 @@ const Globe = function Globe(options = {}) {
     conditions.push([true, true]);
     tilesets.style = new Cesium.Cesium3DTileStyle({
       show: {
-        conditions
-      }
+        conditions,
+      },
     });
   };
 
   // 3D tiles providers
   const cesium3DtilesProviders = () => {
+    console.log("MAPLAYERS ", map.getLayers());
+    console.log("THREEDTILE ", Threedtile);
+
+    const extraTiles = [];
+    const layers = map.getLayers();
+    for (const layer of layers.array_) {
+      console.log("LAYER IS ", layer);
+      if (layer instanceof Threedtile) {
+        console.log("AND THREEDLAYER IS", layer);
+        extraTiles.push(layer);
+      }
+    }
+    console.log("EXTRATILES ARRAY", extraTiles);
     if (cesium3dTiles) {
       cesium3dTiles.forEach((tilesAsset) => {
         const url = tilesAsset.url;
         let shadows = tilesAsset.shadows;
         let conditions = tilesAsset.style || undefined;
-        let show = tilesAsset.filter || 'undefined';
-        if (typeof url === 'number' && cesiumIontoken) {
+        let show = tilesAsset.filter || "undefined";
+        if (typeof url === "number" && cesiumIontoken) {
           tileset = new Cesium.Cesium3DTileset({
             url: Cesium.IonResource.fromAssetId(url),
             maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
@@ -138,11 +156,11 @@ const Globe = function Globe(options = {}) {
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows // SHADOWS PROBLEM Is this working?
+            shadows, // SHADOWS PROBLEM Is this working?
           });
-        } else if (tilesAsset.url === 'OSM-Buildings') {
+        } else if (tilesAsset.url === "OSM-Buildings") {
           tileset = new Cesium.createOsmBuildings({
-            shadows // SHADOWS PROBLEM Is this working?
+            shadows, // SHADOWS PROBLEM Is this working?
           });
         } else {
           tileset = new Cesium.Cesium3DTileset({
@@ -153,7 +171,7 @@ const Globe = function Globe(options = {}) {
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows // SHADOWS PROBLEM Is this working?
+            shadows, // SHADOWS PROBLEM Is this working?
           });
         }
         // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
@@ -162,12 +180,70 @@ const Globe = function Globe(options = {}) {
         if (conditions) {
           tileset.style = new Cesium.Cesium3DTileStyle({
             color: {
-              conditions
+              conditions,
             },
-            show
+            show,
           });
         }
+      });
+    }
+    if (extraTiles.length > 0) {
+      extraTiles.forEach((tilesAsset) => {
+        console.log(
+          "TILESASSET I EXTRATILES",
+          tilesAsset.url,
+          tilesAsset.shadows,
+          tilesAsset.maximumScreenSpaceError,
+          "STYLE",
+          tilesAsset.style
+        );
+        const url = tilesAsset.url;
+        let shadows = tilesAsset.shadows;
+        let conditions =
+          tilesAsset.style !== "default" ? tilesAsset.style : undefined;
+        let show = tilesAsset.filter || "undefined";
+        if (typeof url === "number" && cesiumIontoken) {
+          console.log("KOMMER TILL HIT");
+          tileset = new Cesium.Cesium3DTileset({
+            url: Cesium.IonResource.fromAssetId(url),
+            instanceFeatureIdLabel: tilesAsset.name,
+            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
+            showOutline: tilesAsset.outline || false,
+            dynamicScreenSpaceError: true,
+            dynamicScreenSpaceErrorDensity: 0.00278,
+            dynamicScreenSpaceErrorFactor: 4.0,
+            dynamicScreenSpaceErrorHeightFalloff: 0.25,
+            shadows, // SHADOWS PROBLEM Is this working?
+          });
+        } else if (tilesAsset.url === "OSM-Buildings") {
+          tileset = new Cesium.createOsmBuildings({
+            instanceFeatureIdLabel: tilesAsset.name,
+            shadows, // SHADOWS PROBLEM Is this working?
+          });
+        } else {
+          tileset = new Cesium.Cesium3DTileset({
+            url,
+            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
+            showOutline: tilesAsset.outline || false,
+            dynamicScreenSpaceError: true,
+            dynamicScreenSpaceErrorDensity: 0.00278,
+            dynamicScreenSpaceErrorFactor: 4.0,
+            dynamicScreenSpaceErrorHeightFalloff: 0.25,
+            shadows, // SHADOWS PROBLEM Is this working?
+          });
+        }
+        console.log("TILESET", tileset);
+        // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
+        scene.primitives.add(tileset);
 
+        if (conditions) {
+          tileset.style = new Cesium.Cesium3DTileStyle({
+            color: {
+              conditions,
+            },
+            show,
+          });
+        }
       });
     }
   };
@@ -177,15 +253,14 @@ const Globe = function Globe(options = {}) {
     const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 
     if (Cesium.PostProcessStageLibrary.isSilhouetteSupported(scene)) {
-      const silhouetteBlue = Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
+      const silhouetteBlue =
+        Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
       silhouetteBlue.uniforms.color = Cesium.Color.ROYALBLUE;
       silhouetteBlue.uniforms.length = 0.1;
       silhouetteBlue.selected = [];
 
       scene.postProcessStages.add(
-        Cesium.PostProcessStageLibrary.createSilhouetteStage([
-          silhouetteBlue
-        ])
+        Cesium.PostProcessStageLibrary.createSilhouetteStage([silhouetteBlue])
       );
       handler.setInputAction((movement) => {
         silhouetteBlue.selected = [];
@@ -196,7 +271,7 @@ const Globe = function Globe(options = {}) {
         silhouetteBlue.selected = [pickedFeature];
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     } else {
-      console.warn('Silhouette for 3d objects is not supported');
+      console.warn("Silhouette for 3d objects is not supported");
     }
   };
 
@@ -209,44 +284,61 @@ const Globe = function Globe(options = {}) {
 
     handler.setInputAction((click) => {
       const feature = scene.pick(click.position);
+
       const cartesian = scene.pickPosition(click.position);
 
-      if (Cesium.defined(feature) && feature instanceof Cesium.Cesium3DTileFeature) {
+      if (
+        Cesium.defined(feature) &&
+        feature instanceof Cesium.Cesium3DTileFeature
+      ) {
+        console.log("IS DEFINED");
+        const layerName = feature.primitive.instanceFeatureIdLabel;
+        console.log("FEATURE PRIMITIVE", layerName);
+        console.log("FEATURE TILESET", feature.tileset);
         const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
         const lon = Cesium.Math.toDegrees(Number(cartographic.longitude));
         const lat = Cesium.Math.toDegrees(Number(cartographic.latitude));
         // Use alt for height
         // const alt = cartographic.height;
         coordinate = [lon, lat];
-        if (viewer.getProjectionCode() === 'EPSG:3857') {
-          coordinate = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
+        if (viewer.getProjectionCode() === "EPSG:3857") {
+          coordinate = proj4("EPSG:4326", "EPSG:3857", [lon, lat]);
         }
 
         const propertyIds = feature.getPropertyIds();
         const contentItems = [];
 
-        propertyIds.forEach(propertyId => {
+        propertyIds.forEach((propertyId) => {
           const propId = feature.getProperty(propertyId);
-          title = feature.getProperty('name');
+          title = feature.getProperty("name");
           if (title === undefined) {
-            title = `Byggnadsid: ${feature.getProperty('elementId')}`;
+            title = `Byggnadsid: ${feature.getProperty("elementId")}`;
           }
           if (propId !== undefined) {
-            const content = `<ul><li><b>${propertyId}:</b> ${feature.getProperty(propertyId)}</li>`;
+            const content = `<ul><li><b>${propertyId}:</b> ${feature.getProperty(
+              propertyId
+            )}</li>`;
             contentItems.push(content);
           }
         });
         obj.title = `${title}`;
-        obj.content = `${contentItems.join(' ')}</ul>`;
+        //obj.layerName = 'sauveterre';
+        obj.layerName = layerName;
+        console.log("LAYERNAME ", layerName);
+        obj.content = `${contentItems.join(" ")}</ul>`;
         //skapar en ny olFeature här baserat på 2D-koordinaterna att skicka in till featureInfo
         //pga doRender() vill ha en sån. Utan Feature renderas popup på fel ställe,
         //även om man skickar med koordinater till featureInfo.render()
         obj.feature = new Feature({
           geometry: new Point(coordinate),
-          name: 'DummyPoint',
+          title: `${title}`,
+          name: "DummyPoint",
+          content: `${contentItems.join(" ")}</ul>`,
         });
 
-        featureInfo.render([obj], 'overlay', coordinate, coordinate);
+        //featureInfo.render([obj], 'overlay', coordinate, coordinate);
+        console.log("obnject", obj);
+        featureInfo.showFeatureInfo(obj);
       } else if (!Cesium.defined(feature)) {
         featureInfo.clear();
       } else if (feature.primitive.olFeature) {
@@ -254,12 +346,12 @@ const Globe = function Globe(options = {}) {
         const primitive = feature.primitive.olFeature;
         const layer = feature.primitive.olLayer;
 
-        obj.feature = feature;
-        obj.title = feature.primitive.olLayer.get('title');
+        obj.feature = primitive;
+        obj.title = feature.primitive.olLayer.get("title");
         obj.content = getAttributes(primitive, layer);
         obj.layer = layer;
 
-        featureInfo.render([obj], 'overlay', coordinate);
+        featureInfo.render([obj], "overlay", coordinate);
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   };
@@ -283,8 +375,8 @@ const Globe = function Globe(options = {}) {
   // Change font-family
   const initFlatpickr = () => {
     flatpickrEl = El({
-      tagName: 'div',
-      cls: 'flex column z-index-ontop-top-times20'
+      tagName: "div",
+      cls: "flex column z-index-ontop-top-times20",
     });
 
     htmlString = flatpickrEl.render();
@@ -301,17 +393,29 @@ const Globe = function Globe(options = {}) {
 
   // Configure options for Cesium.Scene
   const sceneSettings = () => {
-    settings.enableAtmosphere = settings.enableAtmosphere ? scene.skyAtmosphere.show = true : scene.skyAtmosphere.show = false;
-    settings.enableFog = settings.enableFog ? scene.fog.enabled = true : scene.fog.enabled = false;
-    settings.enableShadows = settings.enableShadows ? scene.shadows = true : scene.shadows = false;
+    settings.enableAtmosphere = settings.enableAtmosphere
+      ? (scene.skyAtmosphere.show = true)
+      : (scene.skyAtmosphere.show = false);
+    settings.enableFog = settings.enableFog
+      ? (scene.fog.enabled = true)
+      : (scene.fog.enabled = false);
+    settings.enableShadows = settings.enableShadows
+      ? (scene.shadows = true)
+      : (scene.shadows = false);
   };
 
   // Configure options for Cesium.Globe
   const globeSettings = () => {
     const globe = scene.globe;
-    settings.depthTestAgainstTerrain = settings.depthTestAgainstTerrain ? globe.depthTestAgainstTerrain = true : globe.depthTestAgainstTerrain = false;
-    settings.enableGroundAtmosphere = settings.enableGroundAtmosphere ? globe.showGroundAtmosphere = true : globe.showGroundAtmosphere = false;
-    settings.enableLighting = settings.enableLighting ? globe.enableLighting = true : globe.enableLighting = false;
+    settings.depthTestAgainstTerrain = settings.depthTestAgainstTerrain
+      ? (globe.depthTestAgainstTerrain = true)
+      : (globe.depthTestAgainstTerrain = false);
+    settings.enableGroundAtmosphere = settings.enableGroundAtmosphere
+      ? (globe.showGroundAtmosphere = true)
+      : (globe.showGroundAtmosphere = false);
+    settings.enableLighting = settings.enableLighting
+      ? (globe.enableLighting = true)
+      : (globe.enableLighting = false);
     if (settings.skyBox) {
       const url = settings.skyBox.url;
       scene.skyBox = new Cesium.SkyBox({
@@ -321,14 +425,14 @@ const Globe = function Globe(options = {}) {
           positiveY: `${url}${settings.skyBox.images.pY}`,
           negativeY: `${url}${settings.skyBox.images.nY}`,
           positiveZ: `${url}${settings.skyBox.images.pZ}`,
-          negativeZ: `${url}${settings.skyBox.images.nZ}`
-        }
+          negativeZ: `${url}${settings.skyBox.images.nZ}`,
+        },
       });
     }
     settings.skyBox = false;
   };
 
-  // Asynchronously calls to component functions 
+  // Asynchronously calls to component functions
   const callFuncAsync = async () => {
     await Promise.all([
       terrainProviders(),
@@ -339,18 +443,18 @@ const Globe = function Globe(options = {}) {
       activeGlobeOnStart(),
       globeSettings(),
       sceneSettings(),
-      cesiumCredits()
+      cesiumCredits(),
     ]);
   };
 
   return Component({
-    name: 'globe',
+    name: "globe",
     onAdd(evt) {
       viewer = evt.target;
       if (!target) target = `${viewer.getMain().getNavigation().getId()}`;
       oGlobeTarget = viewer.getId();
       map = viewer.getMap();
-      featureInfo = viewer.getControlByName('featureInfo');
+      featureInfo = viewer.getControlByName("featureInfo");
 
       // Init flatpickr to set the datetime in oGlobe.time
       initFlatpickr();
@@ -364,50 +468,50 @@ const Globe = function Globe(options = {}) {
         terrainExaggeration: 1,
         time: function () {
           return Cesium.JulianDate.fromDate(new Date(fp.element.value));
-        }
+        },
       });
 
       // OLCesium needs to be global
       window.oGlobe = oGlobe;
-      // Gets Cesium.Scene 
+      // Gets Cesium.Scene
       scene = oGlobe.getCesiumScene();
       // setResolutionScale as configuration option
       oGlobe.setResolutionScale(resolutionScale);
-      // Asynchronously calls to component functions 
+      // Asynchronously calls to component functions
       callFuncAsync();
 
-      this.on('render', this.onRender);
+      this.on("render", this.onRender);
       this.addComponents(buttons);
       this.render();
     },
     onInit() {
       globeEl = El({
-        tagName: 'div',
-        cls: 'flex column z-index-ontop-top-times20'
+        tagName: "div",
+        cls: "flex column z-index-ontop-top-times20",
       });
       globeButton = Button({
-        cls: 'o-measure padding-small margin-bottom-smaller icon-smaller round light box-shadow',
+        cls: "o-measure padding-small margin-bottom-smaller icon-smaller round light box-shadow",
         click() {
           // Toggles globe on/off
           // TODO
           // Toggle flatpickrButton aswell
           toggleGlobe();
         },
-        icon: '#fa-cube',
-        tooltipText: 'Globe',
-        tooltipPlacement: 'east'
+        icon: "#fa-cube",
+        tooltipText: "Globe",
+        tooltipPlacement: "east",
       });
       buttons.push(globeButton);
 
       flatpickrButton = Button({
-        cls: 'o-measure-length padding-small margin-bottom-smaller icon-smaller round light box-shadow',
+        cls: "o-measure-length padding-small margin-bottom-smaller icon-smaller round light box-shadow",
         click() {
           // Toggles datetime picker
           fp.open();
         },
-        icon: '#ic_clock_24px',
-        tooltipText: 'Datetime picker',
-        tooltipPlacement: 'east'
+        icon: "#ic_clock_24px",
+        tooltipText: "Datetime picker",
+        tooltipPlacement: "east",
       });
       buttons.push(flatpickrButton);
     },
@@ -422,8 +526,8 @@ const Globe = function Globe(options = {}) {
       el = dom.html(htmlString);
       document.getElementById(globeEl.getId()).appendChild(el);
 
-      this.dispatch('render');
-    }
+      this.dispatch("render");
+    },
   });
 };
 
