@@ -163,11 +163,15 @@
     },
     {
       "name": "OSMSTUFF",
+      "title": "OSMSTUFF_TITLE",
       "type": "THREEDTILE",
       "url": "OSM-Buildings",
+      "group": "root",
+      "queryable": true,
       "maximumScreenSpaceError": 16,
       "outline": true,
       "shadows": true,
+      "visible": false,
       "filter": "${feature['elementId']} !== 251329024 && ${feature['elementId']} !== 425027205 && ${feature['elementId']} !== 425002757",
       "style": [
         [
@@ -203,10 +207,13 @@
     },
     {
       "name": "threedtileChurch",
+      "title": "CHURCH",
       "url": 1286474,
+      "group": "root",
       "maximumScreenSpaceError": 16,
       "outline": true,
       "shadows": true,
+      "visible": true,
       "type": "THREEDTILE"
     },
     {

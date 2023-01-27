@@ -129,74 +129,20 @@ const Globe = function Globe(options = {}) {
   // 3D tiles providers
   const cesium3DtilesProviders = () => {
     console.log("MAPLAYERS ", map.getLayers());
-    console.log("THREEDTILE ", Threedtile);
 
-    const extraTiles = [];
+    /*const extraTiles = [];
     const layers = map.getLayers();
     for (const layer of layers.array_) {
-      console.log("LAYER IS ", layer);
       if (layer instanceof Threedtile) {
-        console.log("AND THREEDLAYER IS", layer);
         extraTiles.push(layer);
       }
     }
-    console.log("EXTRATILES ARRAY", extraTiles);
-    if (cesium3dTiles) {
-      cesium3dTiles.forEach((tilesAsset) => {
-        const url = tilesAsset.url;
-        let shadows = tilesAsset.shadows;
-        let conditions = tilesAsset.style || undefined;
-        let show = tilesAsset.filter || "undefined";
-        if (typeof url === "number" && cesiumIontoken) {
-          tileset = new Cesium.Cesium3DTileset({
-            url: Cesium.IonResource.fromAssetId(url),
-            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
-            showOutline: tilesAsset.outline || false,
-            dynamicScreenSpaceError: true,
-            dynamicScreenSpaceErrorDensity: 0.00278,
-            dynamicScreenSpaceErrorFactor: 4.0,
-            dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows, // SHADOWS PROBLEM Is this working?
-          });
-        } else if (tilesAsset.url === "OSM-Buildings") {
-          tileset = new Cesium.createOsmBuildings({
-            shadows, // SHADOWS PROBLEM Is this working?
-          });
-        } else {
-          tileset = new Cesium.Cesium3DTileset({
-            url,
-            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
-            showOutline: tilesAsset.outline || false,
-            dynamicScreenSpaceError: true,
-            dynamicScreenSpaceErrorDensity: 0.00278,
-            dynamicScreenSpaceErrorFactor: 4.0,
-            dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows, // SHADOWS PROBLEM Is this working?
-          });
-        }
-        // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
-        scene.primitives.add(tileset);
-
-        if (conditions) {
-          tileset.style = new Cesium.Cesium3DTileStyle({
-            color: {
-              conditions,
-            },
-            show,
-          });
-        }
-      });
-    }
     if (extraTiles.length > 0) {
       extraTiles.forEach((tilesAsset) => {
-        console.log(
-          "TILESASSET I EXTRATILES",
-          tilesAsset.url,
-          tilesAsset.shadows,
-          tilesAsset.maximumScreenSpaceError,
-          "STYLE",
-          tilesAsset.style
-        );
+        console.log("TILESASSET I EXTRATILES", tilesAsset);
+        console.log("TILESET IS VISIBLE");
+        console.log(tilesAsset.getVisible());
+
         const url = tilesAsset.url;
         let shadows = tilesAsset.shadows;
         let conditions =
@@ -214,11 +160,13 @@ const Globe = function Globe(options = {}) {
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
+            show: tilesAsset.visible,
           });
         } else if (tilesAsset.url === "OSM-Buildings") {
           tileset = new Cesium.createOsmBuildings({
             instanceFeatureIdLabel: tilesAsset.name,
             shadows, // SHADOWS PROBLEM Is this working?
+            show: tilesAsset.visible,
           });
         } else {
           tileset = new Cesium.Cesium3DTileset({
@@ -230,6 +178,7 @@ const Globe = function Globe(options = {}) {
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
+            show: tilesAsset.visible,
           });
         }
         console.log("TILESET", tileset);
@@ -245,6 +194,67 @@ const Globe = function Globe(options = {}) {
           });
         }
       });
+    }*/
+    const layers = map.getLayers();
+    for (const layer of layers.array_) {
+      if (layer instanceof Threedtile) {
+        console.log("layer I EXTRATILES", layer);
+        console.log("layer IS VISIBLE");
+        console.log(layer.getVisible());
+        let layerTileset;
+
+        const url = layer.url;
+        let shadows = layer.shadows;
+        let conditions = layer.style !== "default" ? layer.style : undefined;
+        let show = layer.filter || "undefined";
+        if (typeof url === "number" && cesiumIontoken) {
+          console.log("KOMMER TILL HIT");
+          layerTileset = new Cesium.Cesium3DTileset({
+            url: Cesium.IonResource.fromAssetId(url),
+            instanceFeatureIdLabel: layer.name,
+            maximumScreenSpaceError: layer.maximumScreenSpaceError,
+            showOutline: layer.outline || false,
+            dynamicScreenSpaceError: true,
+            dynamicScreenSpaceErrorDensity: 0.00278,
+            dynamicScreenSpaceErrorFactor: 4.0,
+            dynamicScreenSpaceErrorHeightFalloff: 0.25,
+            shadows, // SHADOWS PROBLEM Is this working?
+            show: layer.visible,
+          });
+        } else if (layer.url === "OSM-Buildings") {
+          layerTileset = new Cesium.createOsmBuildings({
+            instanceFeatureIdLabel: layer.name,
+            shadows, // SHADOWS PROBLEM Is this working?
+            show: layer.visible,
+          });
+        } else {
+          layerTileset = new Cesium.Cesium3DTileset({
+            url,
+            maximumScreenSpaceError: layer.maximumScreenSpaceError,
+            showOutline: layer.outline || false,
+            dynamicScreenSpaceError: true,
+            dynamicScreenSpaceErrorDensity: 0.00278,
+            dynamicScreenSpaceErrorFactor: 4.0,
+            dynamicScreenSpaceErrorHeightFalloff: 0.25,
+            shadows, // SHADOWS PROBLEM Is this working?
+            show: layer.visible,
+          });
+        }
+        console.log("layer", layer);
+        // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
+        const tileset = scene.primitives.add(layerTileset);
+        layer.CesiumTileset = tileset;
+        console.log("layer.CesiumTileset", layer);
+
+        if (conditions) {
+          layerTileset.style = new Cesium.Cesium3DTileStyle({
+            color: {
+              conditions,
+            },
+            show,
+          });
+        }
+      }
     }
   };
 
