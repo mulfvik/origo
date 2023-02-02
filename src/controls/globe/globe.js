@@ -6,6 +6,7 @@ import getAttributes from "../../getattributes";
 import flatpickr from "flatpickr";
 import Point from "ol/geom/Point";
 import Feature from "ol/Feature";
+
 import { Threedtile } from "../../layer/threedtile";
 
 // ol-cesium depends on a global Cesium
@@ -129,122 +130,53 @@ const Globe = function Globe(options = {}) {
   // 3D tiles providers
   const cesium3DtilesProviders = () => {
     console.log("MAPLAYERS ", map.getLayers());
-
-    /*const extraTiles = [];
     const layers = map.getLayers();
     for (const layer of layers.array_) {
       if (layer instanceof Threedtile) {
-        extraTiles.push(layer);
-      }
-    }
-    if (extraTiles.length > 0) {
-      extraTiles.forEach((tilesAsset) => {
-        console.log("TILESASSET I EXTRATILES", tilesAsset);
-        console.log("TILESET IS VISIBLE");
-        console.log(tilesAsset.getVisible());
-
-        const url = tilesAsset.url;
-        let shadows = tilesAsset.shadows;
-        let conditions =
-          tilesAsset.style !== "default" ? tilesAsset.style : undefined;
-        let show = tilesAsset.filter || "undefined";
-        if (typeof url === "number" && cesiumIontoken) {
-          console.log("KOMMER TILL HIT");
-          tileset = new Cesium.Cesium3DTileset({
-            url: Cesium.IonResource.fromAssetId(url),
-            instanceFeatureIdLabel: tilesAsset.name,
-            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
-            showOutline: tilesAsset.outline || false,
-            dynamicScreenSpaceError: true,
-            dynamicScreenSpaceErrorDensity: 0.00278,
-            dynamicScreenSpaceErrorFactor: 4.0,
-            dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows, // SHADOWS PROBLEM Is this working?
-            show: tilesAsset.visible,
-          });
-        } else if (tilesAsset.url === "OSM-Buildings") {
-          tileset = new Cesium.createOsmBuildings({
-            instanceFeatureIdLabel: tilesAsset.name,
-            shadows, // SHADOWS PROBLEM Is this working?
-            show: tilesAsset.visible,
-          });
-        } else {
-          tileset = new Cesium.Cesium3DTileset({
-            url,
-            maximumScreenSpaceError: tilesAsset.maximumScreenSpaceError,
-            showOutline: tilesAsset.outline || false,
-            dynamicScreenSpaceError: true,
-            dynamicScreenSpaceErrorDensity: 0.00278,
-            dynamicScreenSpaceErrorFactor: 4.0,
-            dynamicScreenSpaceErrorHeightFalloff: 0.25,
-            shadows, // SHADOWS PROBLEM Is this working?
-            show: tilesAsset.visible,
-          });
-        }
-        console.log("TILESET", tileset);
-        // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
-        scene.primitives.add(tileset);
-
-        if (conditions) {
-          tileset.style = new Cesium.Cesium3DTileStyle({
-            color: {
-              conditions,
-            },
-            show,
-          });
-        }
-      });
-    }*/
-    const layers = map.getLayers();
-    for (const layer of layers.array_) {
-      if (layer instanceof Threedtile) {
-        console.log("layer I EXTRATILES", layer);
-        console.log("layer IS VISIBLE");
-        console.log(layer.getVisible());
         let layerTileset;
 
-        const url = layer.url;
-        let shadows = layer.shadows;
-        let conditions = layer.style !== "default" ? layer.style : undefined;
-        let show = layer.filter || "undefined";
+        const url = layer.values_.url;
+        let shadows = layer.values_.shadows;
+        let conditions =
+          layer.values_.style !== "default" ? layer.values_.style : undefined;
+        let show = layer.values_.filter || "undefined";
         if (typeof url === "number" && cesiumIontoken) {
           console.log("KOMMER TILL HIT");
           layerTileset = new Cesium.Cesium3DTileset({
             url: Cesium.IonResource.fromAssetId(url),
-            instanceFeatureIdLabel: layer.name,
-            maximumScreenSpaceError: layer.maximumScreenSpaceError,
-            showOutline: layer.outline || false,
+            instanceFeatureIdLabel: layer.values_.name,
+            maximumScreenSpaceError: layer.values_.maximumScreenSpaceError,
+            showOutline: layer.values_.outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.visible,
+            show: layer.values_.visible,
           });
-        } else if (layer.url === "OSM-Buildings") {
+        } else if (layer.values_.url === "OSM-Buildings") {
           layerTileset = new Cesium.createOsmBuildings({
-            instanceFeatureIdLabel: layer.name,
+            instanceFeatureIdLabel: layer.values_.name,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.visible,
+            show: layer.values_.visible,
           });
         } else {
           layerTileset = new Cesium.Cesium3DTileset({
             url,
-            maximumScreenSpaceError: layer.maximumScreenSpaceError,
-            showOutline: layer.outline || false,
+            maximumScreenSpaceError: layer.values_.maximumScreenSpaceError,
+            showOutline: layer.values_.outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.visible,
+            show: layer.values_.visible,
           });
         }
         console.log("layer", layer);
         // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
         const tileset = scene.primitives.add(layerTileset);
         layer.CesiumTileset = tileset;
-        console.log("layer.CesiumTileset", layer);
 
         if (conditions) {
           layerTileset.style = new Cesium.Cesium3DTileStyle({

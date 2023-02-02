@@ -59,6 +59,7 @@ const OverlayLayer = function OverlayLayer(options) {
 
   const getCheckIcon = (visible) => {
     const isVisible = visible ? checkIcon : uncheckIcon;
+    console.log("VISIBLE IN GETCHECK ", visible);
     return isVisible;
   };
 
@@ -71,9 +72,9 @@ const OverlayLayer = function OverlayLayer(options) {
     if (!visible && groupExclusive) {
       const layers = viewer.getLayersByProperty("group", layerGroup);
       layers.forEach((l) => l.setVisible(false));
-      console.log("LAYERS IN TOGGLEVISIBLE", layers);
     }
     layer.setVisible(!visible);
+    console.log("TOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOGGLE");
     return !visible;
   };
 
@@ -127,7 +128,7 @@ const OverlayLayer = function OverlayLayer(options) {
     click() {
       if (!secure) {
         toggleVisible(layer.getVisible());
-        console.log("CLICK");
+        console.log("NOT SECURE");
         console.log(layer);
         console.log(layer.getVisible());
       }

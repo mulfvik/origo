@@ -1,74 +1,40 @@
 import Layer from "ol/layer/Layer";
+import Source from "ol/source/Source";
+import LayerProperty from "ol/layer/Property.js";
 
-class Threedtile {
+const superOptions = {
+  render: function () {
+    console.log("RENDERING");
+  },
+};
+class Threedtile extends Layer {
   constructor(options) {
+    super(superOptions);
     for (const [key, value] of Object.entries(options)) {
-      this[key] = value;
+      key === "visible"
+        ? this.set(LayerProperty.VISIBLE, value)
+        : (this.values_[key] = value);
     }
+    this.setVisible = function (visible) {
+      console.log("THREEDTILEJS, GETVISIBLE", this.getVisible);
+      this.set(LayerProperty.VISIBLE, visible);
+      this.CesiumTileset.show = !this.CesiumTileset.show;
+    };
+    this.setSource(new Source({ projection: "EPSG:4326" }));
+    (this.getMaxResolution = function () {
+      return 10000000;
+    }),
+      (this.getMinResolution = function () {
+        return 0;
+      }),
+      console.log("THIS IS THREEDTILE", this);
+    console.log("THIS SOURCE", this.setSource);
   }
 }
 
-const threedtile = function threedtile(layerOptions) {
-  const dummySource = {
-    on: function () {
-      console.log("dummySource");
-    },
-  };
-  const threedtileDefault = {
-    layerType: "threedtile",
-    once: function () {
-      console.log("THREEDTILEJS, ONCE");
-    },
-    on: function (type, listener) {
-      console.log("TYPE", type, "LISTENER", listener);
-    },
-    getLayerStatesArray: function () {},
-    addEventListener: function () {},
-    getVisible: function () {
-      console.log("THREEDTILEJS, GETVISIBLE");
-      console.log(this.visible);
-      return this.visible;
-      //return true;
-    },
-    setVisible: function (visible) {
-      console.log("THREEDTILEJS, SETVISIBLE");
-      console.log("THIS IN SETVISIBLE ", this);
-      this.visible = visible;
-      this.CesiumTileset.show = !this.CesiumTileset.show;
-    },
-    getSource: function () {
-      return dummySource;
-    },
-    get: function (getwhat) {
-      if (getwhat === "name") {
-        console.log("GETWHAT", getwhat, this.name);
-        return this.name;
-      } else if (getwhat === "title") {
-        return this.title;
-      } else if (getwhat === "group") {
-        return this.group;
-      } else if (getwhat === "expanded") {
-        return this.expanded;
-      }
-    },
-    getSelectionGroupTitle: function () {
-      return this.name;
-    },
-    getOpacity: function () {
-      return 1;
-    },
-    getMaxResolution: function () {
-      return 10000000;
-    },
-    getMinResolution: function () {
-      return 0;
-    },
-    on: function () {},
-    getZIndex: function () {},
-  };
-  const threedtileOptions = Object.assign(threedtileDefault, layerOptions);
+const threedtile = function threedtile(options) {
+  //const threedtileOptions = Object.assign(layerOptions);
 
-  return new Threedtile(threedtileOptions);
+  return new Threedtile(options);
 };
-
 export { threedtile, Threedtile };
