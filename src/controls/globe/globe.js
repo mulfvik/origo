@@ -131,45 +131,52 @@ const Globe = function Globe(options = {}) {
   // 3D tiles providers
   const cesium3DtilesProviders = () => {
     const layers = map.getLayers();
-    for (const layer of layers.array_) {
+    layers.forEach((layer) => {
       if (layer instanceof Threedtile) {
+        const {
+          url,
+          style,
+          filter,
+          outline,
+          name,
+          maximumScreenSpaceError,
+          visible,
+          shadows,
+        } = layer.getProperties();
         let layerTileset;
 
-        const url = layer.values_.url;
-        let shadows = layer.values_.shadows;
-        let conditions =
-          layer.values_.style !== "default" ? layer.values_.style : undefined;
-        let show = layer.values_.filter || "undefined";
+        let conditions = style !== "default" ? style : undefined;
+        let show = filter || "undefined";
         if (typeof url === "number" && cesiumIontoken) {
           layerTileset = new Cesium.Cesium3DTileset({
             url: Cesium.IonResource.fromAssetId(url),
-            instanceFeatureIdLabel: layer.values_.name,
-            maximumScreenSpaceError: layer.values_.maximumScreenSpaceError,
-            showOutline: layer.values_.outline || false,
+            instanceFeatureIdLabel: name,
+            maximumScreenSpaceError: maximumScreenSpaceError,
+            showOutline: outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.values_.visible,
+            show: visible,
           });
-        } else if (layer.values_.url === "OSM-Buildings") {
+        } else if (url === "OSM-Buildings") {
           layerTileset = new Cesium.createOsmBuildings({
-            instanceFeatureIdLabel: layer.values_.name,
+            instanceFeatureIdLabel: name,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.values_.visible,
+            show: visible,
           });
         } else {
           layerTileset = new Cesium.Cesium3DTileset({
             url,
-            maximumScreenSpaceError: layer.values_.maximumScreenSpaceError,
-            showOutline: layer.values_.outline || false,
+            maximumScreenSpaceError: maximumScreenSpaceError,
+            showOutline: outline || false,
             dynamicScreenSpaceError: true,
             dynamicScreenSpaceErrorDensity: 0.00278,
             dynamicScreenSpaceErrorFactor: 4.0,
             dynamicScreenSpaceErrorHeightFalloff: 0.25,
             shadows, // SHADOWS PROBLEM Is this working?
-            show: layer.values_.visible,
+            show: visible,
           });
         }
         const tileset = scene.primitives.add(layerTileset);
@@ -184,7 +191,7 @@ const Globe = function Globe(options = {}) {
           });
         }
       }
-    }
+    });
   };
 
   // Origo style on picked feature
