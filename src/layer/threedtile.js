@@ -3,9 +3,7 @@ import Source from "ol/source/Source";
 import LayerProperty from "ol/layer/Property.js";
 
 const superOptions = {
-  render: function () {
-    console.log("RENDERING");
-  },
+  render: function () {},
 };
 class Threedtile extends Layer {
   constructor(options) {
@@ -16,19 +14,16 @@ class Threedtile extends Layer {
         : (this.values_[key] = value);
     }
     this.setVisible = function (visible) {
-      console.log("THREEDTILEJS, GETVISIBLE", this.getVisible);
       this.set(LayerProperty.VISIBLE, visible);
       this.CesiumTileset.show = !this.CesiumTileset.show;
     };
     this.setSource(new Source({ projection: "EPSG:4326" }));
-    (this.getMaxResolution = function () {
+    this.getMaxResolution = function () {
       return 10000000;
-    }),
-      (this.getMinResolution = function () {
-        return 0;
-      }),
-      console.log("THIS IS THREEDTILE", this);
-    console.log("THIS SOURCE", this.setSource);
+    };
+    this.getMinResolution = function () {
+      return 0;
+    };
   }
 }
 

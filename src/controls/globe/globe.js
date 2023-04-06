@@ -130,7 +130,6 @@ const Globe = function Globe(options = {}) {
 
   // 3D tiles providers
   const cesium3DtilesProviders = () => {
-    console.log("MAPLAYERS ", map.getLayers());
     const layers = map.getLayers();
     for (const layer of layers.array_) {
       if (layer instanceof Threedtile) {
@@ -142,7 +141,6 @@ const Globe = function Globe(options = {}) {
           layer.values_.style !== "default" ? layer.values_.style : undefined;
         let show = layer.values_.filter || "undefined";
         if (typeof url === "number" && cesiumIontoken) {
-          console.log("KOMMER TILL HIT");
           layerTileset = new Cesium.Cesium3DTileset({
             url: Cesium.IonResource.fromAssetId(url),
             instanceFeatureIdLabel: layer.values_.name,
@@ -174,8 +172,6 @@ const Globe = function Globe(options = {}) {
             show: layer.values_.visible,
           });
         }
-        console.log("layer", layer);
-        // hide3DtilesById(tilesAsset.hide3DtilesById, tileset);
         const tileset = scene.primitives.add(layerTileset);
         layer.CesiumTileset = tileset;
 
@@ -191,6 +187,7 @@ const Globe = function Globe(options = {}) {
     }
   };
 
+  // Origo style on picked feature
   const pickedFeatureStyle = () => {
     if (Cesium.PostProcessStageLibrary.isSilhouetteSupported(scene)) {
       silhouetteBlue =
@@ -215,18 +212,6 @@ const Globe = function Globe(options = {}) {
       const feature = scene.pick(click.position);
       const cartesian = scene.pickPosition(click.position);
 
-      // Origo style on picked feature
-      /*
-      if (Cesium.PostProcessStageLibrary.isSilhouetteSupported(scene)) {
-        const silhouetteBlue =
-          Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
-        silhouetteBlue.uniforms.color = Cesium.Color.ROYALBLUE;
-        silhouetteBlue.uniforms.length = 0.1;
-        silhouetteBlue.selected = [];
-
-        scene.postProcessStages.add(
-          Cesium.PostProcessStageLibrary.createSilhouetteStage([silhouetteBlue])
-        );*/
       if (silhouetteBlue.selected[0] === feature) {
         return;
       } else {
@@ -242,8 +227,7 @@ const Globe = function Globe(options = {}) {
         const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
         const lon = Cesium.Math.toDegrees(Number(cartographic.longitude));
         const lat = Cesium.Math.toDegrees(Number(cartographic.latitude));
-        // Use alt for height
-        // const alt = cartographic.height;
+
         coordinate = [lon, lat];
 
         if (viewer.getProjectionCode() === "EPSG:3857") {
@@ -267,9 +251,7 @@ const Globe = function Globe(options = {}) {
           }
         });
         obj.title = `${title}`;
-        //obj.layerName = 'sauveterre';
         obj.layerName = layerName;
-        console.log("LAYERNAME ", layerName);
         obj.content = `${contentItems.join(" ")}</ul>`;
         //skapar en ny olFeature här baserat på 2D-koordinaterna att skicka in till featureInfo
         //pga doRender() vill ha en sån. Utan Feature renderas popup på fel ställe,
